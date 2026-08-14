@@ -1,6 +1,6 @@
 # Telemetry v1 power budget
 
-Status: pre-schematic engineering budget, 2026-08-14. It is not a component-selection release or an automotive-compliance claim.
+Status: Task 4 component-freeze budget, 2026-08-14. It is not a released schematic or an automotive-compliance claim.
 
 ## Evidence convention
 
@@ -25,7 +25,7 @@ Datasheet “typical” values are not guaranteed maxima. Unknown marketplace di
 | TCAN3404-Q1 | always-on 3.3 V | 7 mA recessive typical | 55 mA dominant maximum at 60 Ω; 130 mA current-limited bus-fault case; 17 µA standby maximum at 150 °C | 8.2 mA active max, 55 mA dominant peak, 17 µA parked | `VERIFIED_DATASHEET`: TI SLLSFQ6A Tables 7-1/7-2. The 130 mA fault current is a protection/thermal case, not an ordinary rail capacity load. |
 | External shift light | switched 5 V | application dependent | Ten legacy-class RGB LEDs could be 10 × 60 mA = 600 mA | 1.0 A connector/rail envelope | `VERIFIED_DATASHEET`: WS2812B-2020 v1.3 specifies 3.7–5.3 V, VIH ≥2.7 V and 12 mA per color working current, implying 360 mA for ten all-white LEDs. `ASSUMPTION`: legacy/interchangeable pixels may require 60 mA each. `CALCULATED`: 10 × 60 mA = 600 mA. `DESIGN_REQUIREMENT`: 1.0 A protected output gives 67% margin over 600 mA. |
 | Buzzer | switched 5 V or 3.3 V | Part not selected | Magnetic/piezo, active/passive unknown | 200 mA output envelope | `DESIGN_REQUIREMENT`: MOSFET-driven, current-limited/fused branch; select clamp only after load type is known. |
-| Load switches | associated rail | TBD by selected part | On-resistance, off leakage and reverse-current blocking unresolved | ≤1 µA off leakage each; ≤5 µA total parked | `DESIGN_REQUIREMENT`; verify maximum over temperature, not typical only. |
+| TPS22919-Q1 load switches ×4 | associated rail | 90 mΩ typical | 1.5 A device rating; 2 nA typical shutdown | ≤1 µA aggregate parked allocation | `VERIFIED_DATASHEET` device characteristics; `DESIGN_REQUIREMENT` allocation includes temperature/leakage margin. Reverse-current behavior and discharge population must be verified per branch. |
 | Miscellaneous PCB loads | 3.3 V | sensors, pull-ups and status circuits not selected | — | 20 mA active; 10 µA parked | `DESIGN_REQUIREMENT`; indicator LEDs must be off in sleep. |
 
 ## Active rail calculations
@@ -85,7 +85,7 @@ Recommended state: protected vehicle input present; main 3.3 V buck remains enab
 
 | Always-powered item | Rail allocation | 12 V input contribution | Basis |
 |---|---:|---:|---|
-| Input TVS/reverse protection/fuse leakage | — | 5 µA | `DESIGN_REQUIREMENT`; exact maximum over temperature unresolved |
+| LM74502H-Q1 reverse-controller supply current plus input protection leakage | — | 110 µA | `VERIFIED_DATASHEET`: controller maximum operating supply-current bound used conservatively; TVS/MOSFET/fuse leakage must fit inside this allocation over temperature |
 | Main buck own IQ | input | 5 µA | `DESIGN_REQUIREMENT`; LMQ66420-Q1 advertises 1.5 µA typical, but a guaranteed implementation maximum is not yet established |
 | Vehicle detector and gated divider | input | 15 µA | `DESIGN_REQUIREMENT`; continuous 120 kΩ + 33 kΩ reference divider would draw `12/153k = 78.4 µA` and is therefore not retained continuously |
 | TCAN3404-Q1 standby | 17 µA at 3.3 V | 7.8 µA | `VERIFIED_DATASHEET` 17 µA max; `ASSUMPTION` 60% low-load conversion; `CALCULATED`: `17µA×3.3/(12×0.60)` |
@@ -96,17 +96,17 @@ Recommended state: protected vehicle input present; main 3.3 V buck remains enab
 | GNSS V_BCKP | off | 0 µA | Recommended no-always-on-backup choice |
 | LEDs, display, SD, AUX5, buzzer | off | 0 µA | `DESIGN_REQUIREMENT`; no always-on indicator |
 | Miscellaneous leakage allocation | — | 10 µA | `DESIGN_REQUIREMENT` |
-| **Subtotal** | | **80.3 µA** | `CALCULATED` |
-| **100% uncertainty/temperature allowance** | | **80.3 µA** | `DESIGN_REQUIREMENT` margin |
-| **Expected design envelope at 12 V** | | **≤161 µA (0.161 mA)** | `CALCULATED` |
+| **Subtotal** | | **185.3 µA** | `CALCULATED`; TCA6408A and residual logic leakage are included in the miscellaneous allocation pending a complete netlist |
+| **100% uncertainty/temperature allowance** | | **185.3 µA** | `DESIGN_REQUIREMENT` margin |
+| **Expected design envelope at 12 V** | | **≤370.6 µA (0.371 mA)** | `CALCULATED` |
 
-The 60% low-load efficiency is an `ASSUMPTION`, deliberately below the candidate regulator's headline light-load efficiency; bench characterization must replace it. At 0.161 mA, the calculation has 0.839 mA margin to the 1 mA requirement and 0.339 mA to the 0.5 mA stretch target. Accordingly:
+The 60% low-load efficiency is an `ASSUMPTION`, deliberately below the selected regulator's headline light-load efficiency; bench characterization must replace it. At 0.371 mA, the calculation has 0.629 mA margin to the 1 mA requirement and 0.129 mA to the 0.5 mA stretch target. Accordingly:
 
 - `<1 mA average parked` is realistically achievable (`DESIGN_REQUIREMENT`) with substantial tolerance.
 - `<0.5 mA average parked` is also realistically achievable at 12 V/room temperature (`DESIGN_REQUIREMENT`), but is not accepted until complete-board measurement over voltage and temperature.
 - Release limits: <0.50 mA typical at 12 V and 25 °C; <1.00 mA over the specified parked voltage/temperature range (`DESIGN_REQUIREMENT`). Wake retries, periodic timer work and post-drive shutdown time must be included in the eventual time-average measurement.
 
-For scale only, a continuous 1 mA draws `24 mAh/day` and `0.72 Ah/30 days`; 0.161 mA draws `0.116 Ah/30 days` (`CALCULATED`, ignoring battery self-discharge and temperature). This is not a claim of safe storage duration for any vehicle battery.
+For scale only, a continuous 1 mA draws `24 mAh/day` and `0.72 Ah/30 days`; 0.371 mA draws `0.267 Ah/30 days` (`CALCULATED`, ignoring battery self-discharge and temperature). This is not a claim of safe storage duration for any vehicle battery.
 
 ## Architecture comparison
 
@@ -124,17 +124,17 @@ For scale only, a continuous 1 mA draws `24 mAh/day` and `0.72 Ah/30 days`; 0.16
 
 **Recommendation:** Architecture C, implemented as a hybrid rail-on system: protected battery/USB source OR → low-IQ 2 A automotive 3.3 V buck for ESP32/CAN, individually switched GNSS/SD/display branches, and a separately switched 2 A 5 V auxiliary converter for external display/shift-light/buzzer needs. This preserves reliable CAN/timer/button wake without a second wake MCU and still meets the parked-current targets on paper.
 
-## Regulator candidates, not final selections
+## Regulator comparison and freeze
 
 | Candidate | Qualification / input / output | IQ and shutdown | Package / status | Advantages | Disadvantages / unresolved |
 |---|---|---|---|---|---|
-| TI LMQ66420-Q1 | AEC-Q100; 3–36 V operating, 42 V transient; 2 A; fixed/adjustable 3.3/5 V | 1.5 µA typical IQ; 250 nA typical shutdown | 2.6 mm × 2.6 mm QFN; active; distributor availability not assessed | Low parked IQ, 2 A, low-EMI features, >85% advertised at 1 mA | Exact guaranteed maximum supply current, thermal design, passives and clamped transient margin must be taken from the orderable-part data sheet |
+| TI LMQ66420-Q1 | AEC-Q100; 3–36 V operating, 42 V transient; 2 A; fixed/adjustable 3.3/5 V | 1.5 µA typical IQ; 250 nA typical shutdown | MC3 QFN, active; availability checked in Task 4 | **Frozen silicon for MAIN_3V3 and AUX5**; low parked IQ, 2 A, low-EMI features | Exact feedback/passive values, effective capacitance, thermal design and clamped transient margin remain schematic calculations |
 | TI LM53602-Q1 | AEC-Q100; 3.5–36 V, 42 V transient; 2 A; 3.3/5 V | 24 µA no-load typical; 1.7 µA shutdown typical | VQFN; active; distributor availability not assessed | Mature automotive family, 2.1 MHz | Higher rail-on IQ; minimum VIN less favorable in crank |
 | Infineon TLS4120D0EP V33 | Automotive; 3.7–40 V; 3.3 V, 2 A | <31 µA stated IQ | exposed-pad package; active; distributor availability not assessed | 40 V input and 2 A | Higher IQ; input minimum and transient margin must be reconciled |
 | ADI MAX20006 | AEC-Q100; 3.5–36 V; 4/6/8 A family | 25 µA no-load typical | TQFN; active; distributor availability not assessed | High load margin, 40 V load-dump-tolerant family | Oversized, more area/cost and higher IQ for this budget |
 | TI TPS7B82-Q1 (AON-only comparator) | AEC-Q100; 3–40 V, 45 V transient; 300 mA LDO | 2.7 µA typical / 5 µA max light-load; 300 nA shutdown | HVSSOP/WSON; active; distributor availability not assessed | Simple very-low-IQ small AON rail | Not suitable as active main rail: at 12 V to 3.3 V and 0.3 A it would dissipate 2.61 W (`CALCULATED`) |
 
-Primary sources are listed below. The LMQ66420-Q1 is the preferred **candidate**, not an approved BOM selection. Final selection is blocked on the agreed transient clamp, worst-case IQ, minimum-crank input, detailed loss/thermal calculations, stability/passives and availability.
+Primary sources are listed below. LMQ66420MC3RXBRQ1 silicon is frozen for both converters. TI Table 8-5 provides a 2.2 µH, 4.7 µF input, 1 µF VCC, and two 22 µF nominal output-capacitor starting point; effective capacitance ≥40 µF, feedback, ripple, loss, stability, thermal performance, pulse headroom, and exact passive order codes remain schematic-release calculations.
 
 ## Primary sources
 

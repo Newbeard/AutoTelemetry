@@ -1,42 +1,42 @@
-# Telemetry v1 interfaces and preliminary pin allocation
+# Telemetry v1 interfaces and frozen pin allocation
 
-## Proposed ESP32-S3 allocation
+## ESP32-S3 allocation
 
-This allocation is direct repository evidence from the RejsaCAN v3.4 single-sheet schematic and `RejsaCAN v3.4 - Pinout.h`; it is not a calculated electrical value. It is preliminary: rows marked **modify** require a new derivative schematic and are not instructions to alter the reference files. No GPIO assignment changed during the power/wake review.
+This Task 4 allocation supersedes the preliminary Task 2 table. It is based on the RejsaCAN v3.4 single-sheet schematic, `RejsaCAN v3.4 - Pinout.h`, and the ESP32-S3-WROOM-1 v1.8 pin/strap tables. It defines the future derivative schematic and does not modify the reference files.
 
-| Function | ESP32-S3 GPIO | Direction | Reference status / conflict | Proposal |
+| Function | ESP32-S3 GPIO | Direction | Reference status / conflict | Status |
 |---|---:|---|---|---|
-| CAN RX | 13 | In | Used by U2 R; wake-capable RTC GPIO | Keep |
-| CAN TX | 14 | Out | Used by U2 D | Keep |
-| CAN standby/slope | 38 | Out/Hi-Z | Used by U2 RS through R3 10 kΩ | Keep; define modes in firmware |
-| GNSS UART RX (ESP RX / M9N TX) | 15 | In | Rear breakout, otherwise unused | Add |
-| GNSS UART TX (ESP TX / M9N RX) | 16 | Out | Rear breakout, otherwise unused | Add |
-| Shared SPI SCLK | 39 | Out | SD CLK; JTAG MTCK | Keep/share with display; JTAG conflict documented |
-| Shared SPI MOSI | 40 | Out | SD CMD; JTAG MTDO | Keep/share with display |
-| Shared SPI MISO | 41 | In | SD DAT0; JTAG MTDI | Keep/share/optionally expose to display |
-| microSD CS | 45 | Out | SD DAT3; **strapping pin** | Keep initially; validate reset loading and prefer moving in a future pin optimization if feasible |
-| Display CS | 47 | Out | Front connector, unused | Add |
-| Display DC | 48 | Out | Front connector, unused | Add |
-| Display reset | 12 | Out | Front connector, unused | Add |
-| Display backlight PWM/enable | 7 | Out | Rear breakout, unused | Add through a driver, not directly to load |
-| Shift-light control | 6 | Out | Rear breakout, unused | Add through dedicated driver |
-| Buzzer control | 42 | Out | Rear breakout/JTAG MTMS | Add through driver; loses optional external JTAG while used |
-| I2C SDA | 1 | I/O | Existing I2C connector | Keep |
-| I2C SCL | 2 | I/O | Existing I2C connector | Keep |
-| MODE button | 10 | In | Currently BLUE LED, no pad | **Modify:** reclaim LED net and add benign pull-up/button-to-ground network |
-| Peripheral power enable | 21 | Out | Controls reference U5/3V3_SWITCHED | Keep as domain enable initially; load/current architecture must be redesigned for total demand |
-| Hardware hold | 17 | Out | FORCE_ON | Keep |
-| Threshold sense | 8 | In | SENSE_V_DIG | Keep |
-| Vehicle voltage ADC | 9 | In | SENSE_V_ANA | Keep; recalibrate divider and ADC protection |
+| CAN RX/WUP | 13 | In | Used by U2 R; RTC GPIO | `FROZEN` |
+| CAN TX | 14 | Out | Used by U2 D | `FROZEN` |
+| CAN standby | 38 | Out | Used by U2 RS | `FROZEN`; pull-up makes standby default |
+| GNSS UART RX (ESP RX / M9N TX) | 15 | In | Rear breakout | `FROZEN` |
+| GNSS UART TX (ESP TX / M9N RX) | 16 | Out | Rear breakout | `FROZEN` |
+| Shared SPI SCLK/MOSI/MISO | 39/40/41 | Out/Out/In | SD bus; JTAG MTCK/MTDO/MTDI | `FROZEN`; shared SD/display |
+| microSD CS | 11 | Out | Reclaims YELLOW LED | `FROZEN`; moved from GPIO45 |
+| Display CS/DC/reset | 47/48/12 | Out | Reference breakouts | `FROZEN` |
+| Display backlight PWM | 7 | Out | Rear breakout | `FROZEN`; through open-drain driver |
+| Shift-light data | 6 | Out | Rear breakout | `FROZEN`; through 5 V buffer |
+| Buzzer PWM | 17 | Out | Reference FORCE_ON is replaced by rail-on architecture | `FROZEN`; MOSFET driver |
+| I2C SDA/SCL | 1/2 | I/O | Existing I2C connector | `FROZEN`; also TCA6408A-Q1 |
+| MODE button | 10 | In | Reclaims BLUE LED | `FROZEN`; non-strap RTC GPIO |
+| AUX5 enable | 21 | Out | Replaces generic 3V3_SWITCHED control | `FROZEN`; pull-down default off |
+| USB present | 4 | In | Reclaims board-version input | `FROZEN`; high-impedance VBUS sense |
+| Power fault/status | 5 | In | Reclaims board-version input | `PROVISIONAL`; exact supervisor TBD |
+| Expander interrupt | 18 | In | Previously unused | `FROZEN` |
+| Threshold/activity sense | 8 | In | SENSE_V_DIG concept | `FROZEN`; detector circuit provisional |
+| Protected vehicle ADC | 9 | In | SENSE_V_ANA concept | `FROZEN`; gated divider provisional |
 | UART0 TX debug | 43 | Out | Rear TXD0 pad | Preserve |
 | UART0 RX debug | 44 | In | Rear RXD0 pad | Preserve |
-| Spare GPIO | 11 | I/O | Currently YELLOW LED, no pad | **Modify:** reclaim/expose if status LED is not retained |
+| Native USB D−/D+ | 19/20 | I/O | Native USB | `FROZEN` |
+| JTAG MTMS | 42 | I/O | Rear breakout | `RESERVED`; no buzzer conflict |
+| Strap/test | 45 | — | SD DAT3 in reference; VDD_SPI strap | `RESERVED`; no removable-card load |
+| Strap pins | 0/3/46 | — | Boot/configuration straps | `RESERVED` except GPIO0 PROG |
 
-GPIO4/GPIO5 are tied by the reference schematic to board-version identification and should be reviewed before reuse. GPIO0, GPIO3, GPIO45, and GPIO46 are strapping pins; GPIO19/20 are native USB; GPIO39–42 overlap external JTAG; GPIO43/44 are UART0. GPIO0 and GPIO3 remain untouched in this proposal.
+TCA6408A-Q1 P0…P7 are frozen as GNSS_EN, SD_EN, DISP3_EN, DISP5_EN, SHIFT5_EN, SD_CD_N, STATUS_LED_N and reserved. External pull-downs keep all rail enables off while the expander powers up as inputs. GPIO39–41 intentionally overlap external JTAG; native USB Serial/JTAG is primary, and GPIO42 remains a test pad.
 
 ## Proposed external connectors
 
-Connector families, pin numbers, keying, retention, current ratings, and ESD parts are TBD. The names below define logical contracts only.
+OBD/display/shift connector mechanics remain provisional. Electrical pin contracts, current limits and state behavior are frozen in [`schematic-architecture.md`](schematic-architecture.md).
 
 ### OBD-II harness
 
@@ -95,7 +95,7 @@ The schematic symbol establishes connectivity, but physical header pin-one orien
 ## Bus-level rules
 
 - Every shared-SPI device gets a unique CS and must release MISO when not selected.
-- Keep all device CS lines inactive through reset; GPIO45 strap behavior needs explicit oscilloscope validation with cards inserted and absent.
+- Keep all device CS lines inactive through reset. GPIO45 is reserved; microSD CS is GPIO11.
 - Avoid using GPIO19/20 for anything except USB.
 - MODE must not use the existing PROG/GPIO0 button because a held button changes boot behavior.
 - CAN-H/L test points must be compact and not create long stubs.

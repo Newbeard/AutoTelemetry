@@ -1,26 +1,26 @@
 # Telemetry v1 power, wake and electrical-architecture review
 
-Status: second pre-schematic review, 2026-08-14. Values use the classification in [`power-budget.md`](power-budget.md). No schematic, footprint, layout or compliance approval is implied.
+Status: reconciled to the Task 4 component freeze, 2026-08-14. Values use the classification in [`power-budget.md`](power-budget.md). No schematic, footprint, layout or compliance approval is implied.
 
 ## Recommendation in one view
 
-Use a **hybrid rail-on architecture**. A protected source-OR feeds a low-IQ 2 A-class 3.3 V automotive buck. The ESP32-S3 and a TCAN3404-Q1 remain powered in deep-sleep/standby; GNSS, SD, display and the 5 V external-load converter are independently disabled. This supports CAN, timer, MODE and voltage wake without a separate wake MCU. USB can power the development domain through a reverse-blocked path.
+Use the frozen **hybrid rail-on architecture**. A protected source-OR feeds an LMQ66420MC3RXBRQ1 3.3 V buck. The ESP32-S3 and TCAN3404DRQ1 remain powered in deep-sleep/standby; GNSS, SD, display and the LMQ66420-based AUX5 converter are independently disabled. This supports CAN, timer, MODE and voltage wake without a separate wake MCU. USB powers the development domain through TPS2553QDBVRQ1 current limiting and PMEG6030EP-Q reverse isolation.
 
-`CALCULATED`: complete parked envelope is ≤0.161 mA at 12 V with a 100% allowance; see the reproducible tree in `power-budget.md`. `<1 mA` is the release requirement and `<0.5 mA` is the room-temperature stretch target. Both appear feasible, but neither is accepted until populated-board testing.
+`CALCULATED`: complete parked envelope is ≤0.371 mA at 12 V with a 100% allowance; see the reproducible tree in `power-budget.md`. `<1 mA` is the release requirement and `<0.5 mA` is the room-temperature stretch target. Both appear feasible, but the stretch margin is only 0.129 mA and neither is accepted until populated-board testing.
 
-## Preliminary power-domain block diagram
+## Frozen power-domain block diagram
 
 ```text
 OBD pin 16
     │
-    ├─ fuse/PTC ─ reverse-battery block ─ surge TVS/filter ─ PROTECTED_VBAT
+    ├─ 0437002A ─ LDP01-28AY ─ LM74502H + 2×DMT6007LFGQ ─ filter ─ PROTECTED_VBAT
     │                                                        │
     │                                                        ├─ gated vehicle sense
     │                                                        │      (PARKED: on, ≤15 µA)
     │                                                        │
-USB-C VBUS ─ ESD/current policy ─ reverse block ──────────────┤ source OR
+USB-C VBUS ─ USBLC6 ─ TPS2553-Q1 ─ PMEG6030EP-Q ──────────────┤ source OR
                                                              │
-                                                    low-IQ MAIN_3V3 buck
+                                                    LMQ66420 MAIN_3V3 buck
                                                              │
                          ┌───────────────────────────────────┼──────────────────┐
                          │                                   │                  │
@@ -28,11 +28,11 @@ USB-C VBUS ─ ESD/current policy ─ reverse block ─────────�
                   PARKED: deep sleep                  PARKED: standby          │
                          │                                   │               microSD
                          │                                   └─ CANH/L protection
-                         ├─ switch: GNSS_3V3
+                         ├─ TPS22919: GNSS_3V3
                          │       └─ NEO-M9N + protected active-antenna bias
                          │          V_BCKP tied to switched GNSS rail (v1)
-                         ├─ switch: DISPLAY_3V3 ─ external display connector
-                         └─ enable: AUX5 2 A buck ─ current-limited branches
+                         ├─ TPS22919: DISPLAY_3V3 ─ external display connector
+                         └─ enable: LMQ66420 AUX5 2 A ─ protected branches
                                                    ├─ DISPLAY_5V option
                                                    ├─ SHIFT_5V
                                                    └─ buzzer driver option
@@ -48,7 +48,7 @@ Only the input protection, low-IQ buck, vehicle sense, ESP32, TCAN3404 and wake 
 | Option | Parked topology | Wake coverage | Current/complexity | Finding |
 |---|---|---|---|---|
 | A — rail-on deep sleep | ESP32 and CAN powered; peripherals off | CAN RX, timer, MODE, voltage, USB | Lowest additional parts; current depends on complete module rail | Viable and reliable; essentially the core of the recommendation |
-| B — hardware-off plus always-on wake | Main rails off; battery CAN wake transceiver/controller remains | CAN/WAKE/voltage can assert regulator; timer/button need extra AON logic | Lowest main leakage but needs TCAN1043A-Q1-class 5 V/VIO/INH architecture or another AON controller and more sequencing | Not justified for v1 while the rail-on estimate is only 0.161 mA |
+| B — hardware-off plus always-on wake | Main rails off; battery CAN wake transceiver/controller remains | CAN/WAKE/voltage can assert regulator; timer/button need extra AON logic | Lowest main leakage but needs TCAN1043A-Q1-class 5 V/VIO/INH architecture or another AON controller and more sequencing | Not justified for v1 while the rail-on estimate is 0.371 mA |
 | C — hybrid | ESP32/CAN rail-on; GNSS/SD/display/AUX5 independently off | Same as A, with clean peripheral isolation | More load switches/nets; best observability and fault containment | **Recommended** |
 
 `VERIFIED_DATASHEET`: TCAN3404-Q1 standby monitors the bus for a wake-up pattern and drives RXD low after a valid WUP; standby current is at most 17 µA at 150 °C. `VERIFIED_DATASHEET`: TCAN1043A-Q1 provides VSUP, WAKE and INH and specifies 18 µA typical/30 µA maximum VSUP sleep current, enabling a true hardware-off system, but it also requires 5 V VCC and additional sequencing. The latter remains a future alternative if measured v1 parked current cannot meet the target.
@@ -57,10 +57,10 @@ Only the input protection, low-IQ buck, vehicle sense, ESP32, TCAN3404 and wake 
 
 | Source | Conceptual mechanism | Important qualification |
 |---|---|---|
-| CAN | TCAN3404-Q1 standby WUP → RXD/CAN_RX → ESP wake-capable input | Verify GPIO13 RTC/deep-sleep wake routing on the exact ESP32-S3 configuration and bench-test real vehicle traffic. A WUP indicates activity, not permission to transmit. |
+| CAN | TCAN3404DRQ1 standby WUP → RXD/CAN_RX on GPIO13 | Verify deep-sleep wake behavior on the exact ESP32-S3 module and bench-test real vehicle traffic. A WUP indicates activity, not permission to transmit. |
 | Vehicle voltage | Low-IQ comparator/detector plus gated ADC measurement | A hint only; smart charging invalidates voltage-only ignition inference. Thresholds/hysteresis remain `TBD` pending vehicle measurements. |
 | Timer | ESP32 RTC timer | Used for bounded health checks; duty cycle must be included in average parked current. |
-| MODE button | Normally-open button to a non-strap wake GPIO, preliminary GPIO10 | Debounce and leakage network must meet the parked allocation. |
+| MODE button | Normally-open button to non-strap wake GPIO10 | Debounce and leakage network must meet the parked allocation. |
 | USB | VBUS presence forces/requests development power and enters `USB_DEBUG` | Source isolation must prevent VBUS reaching OBD pin 16 or AUX5 outputs. |
 
 ## Conceptual vehicle-state machine
@@ -110,9 +110,9 @@ The repository single-sheet v3.4 schematic shows DSS34 D6 in series, MF-MSMF110/
 | Fast positive/negative transients | Input TVS plus short-current-loop ceramic/bulk capacitance and damped LC/π filter | ISO 7637-2 pulse test at connector; ensure filter does not ring above downstream rating and capacitors survive ripple/bias/temperature |
 | ESD at power entry | Connector-local automotive ESD/TVS path to low-inductance ground return | ISO 10605 contact/air test levels and coupling method remain test-plan items |
 | Cranking/brownout | Wide-input buck with controlled UVLO; ESP brownout; staged peripheral restart | Measured cold-crank profile, buck dropout/startup, no oscillatory resets, CAN behavior, SD corruption and deterministic state recovery |
-| Conducted noise | Input filter, small switch-node geometry, spread-spectrum/low-EMI converter candidate and rail filtering for GNSS | LISN/conducted emissions and immunity plus GNSS C/N0 sensitivity tests; no CISPR/UNECE claim without testing |
+| Conducted noise | Input filter, small switch-node geometry, LMQ66420 low-EMI converters and rail filtering for GNSS | LISN/conducted emissions and immunity plus GNSS C/N0 sensitivity tests; no CISPR/UNECE claim without testing |
 
-`VERIFIED_DATASHEET`: ST LDP01-xxAY parts are AEC-Q101 load-dump TVS candidates with 22–70 V stand-off family options and 1 µA leakage at 25 °C, but a part number cannot be selected from stand-off voltage alone. `DESIGN_REQUIREMENT`: downstream protected voltage must stay below every component's derated absolute maximum for the entire agreed pulse, and normal/jump-start voltage must stay below TVS stand-off with leakage acceptable over temperature.
+`VERIFIED_DATASHEET`: LDP01-28AY is the provisional AEC-Q101 input TVS: 24 V stand-off, 26.7 V minimum breakdown, 40 V clamp at 120 A for 10/1000 µs, and 45 V at 1250 A for 8/20 µs under its stated conditions. It is not final because a part number cannot be validated without pulse amplitude, source impedance, duration, temperature, ringing, and downstream derating. `DESIGN_REQUIREMENT`: protected voltage must remain below every downstream rating throughout the agreed pulse.
 
 Applicable test-method context: ISO 7637-2:2011 addresses conducted transients on 12/24 V supply lines; ISO 16750-2:2023 addresses electrical loads. These standards define test methods/profiles, not automatic product compliance. OEM pulse severity, cable impedance and acceptance criteria remain unresolved; laboratory validation is mandatory.
 
@@ -129,13 +129,13 @@ Applicable test-method context: ISO 7637-2:2011 addresses conducted transients o
 
 Values are `VERIFIED_DATASHEET` from TI SLLS500K, SLLSFQ6A and SLLSF27. Exact temperature/condition rows remain controlling.
 
-Package/lifecycle comparison (`VERIFIED_DATASHEET`/official product status): SN65HVD230DR is the reference SOIC-8 catalog device. TCAN3403/3404-Q1 are active/production, −40 to +150 °C orderable families offered in SOIC-8, VSON-8 and thin SOT-23-8. TCAN1043A-Q1 is active/production, −40 to +150 °C, with SOIC-14, VSON-14 and thin SOT-23-14 options. Distributor stock and production-volume availability were not assessed, and no package/footprint is selected in this phase.
+Package/lifecycle comparison (`VERIFIED_DATASHEET`/official product status): SN65HVD230DR is the reference SOIC-8 catalog device. TCAN3403/3404-Q1 are active/production, −40 to +150 °C orderable families. TCAN1043A-Q1 is active/production with more pins and supplies. TCAN3404DRQ1 SOIC-8 is frozen; Task 4 availability and price evidence is recorded in `component-freeze.md`.
 
 ### Recommended CAN network interface
 
-- Use TCAN3404-Q1 (TCAN3404DRQ1 is the SOIC comparison ordering code, not a footprint decision) with TXD, RXD and STB; default STB high during reset (`DESIGN_REQUIREMENT`). Firmware modes are explicit: passive/listen-only, active raw CAN, and diagnostic transmission. ISO-TP/UDS/OBD are protocol layers, not electrical modes.
-- Add a connector-local, low-capacitance, AEC-Q101 dual CAN TVS such as ST ESDCAN04-2BWY as a **candidate**. `VERIFIED_DATASHEET`: it is a 12 V CAN-oriented dual protection family; exact clamp/capacitance must be reconciled with TCAN3404 and bitrate. The transceiver's internal ESD rating does not eliminate system-level protection validation.
-- Provide a zero-ohm/DNP substitution footprint for an automotive CAN common-mode choke, bypassed by default until emissions/immunity tests justify it. A choke can improve common-mode emissions but adds DCR, package cost and saturation/fault behavior; select only with exact bus speed and pulse testing.
+- Use frozen TCAN3404DRQ1 SOIC-8 with TXD, RXD and STB; default STB high during reset. Firmware modes are passive/listen-only, active raw CAN, and diagnostic transmission. ISO-TP/UDS/OBD are protocol layers, not electrical modes.
+- Use connector-local ESDCAN04-2BWY. `VERIFIED_DATASHEET`: maximum capacitance is 19 pF, typical breakdown is 27.5 V, clamping is 43 V at 3 A, and leakage is 0.05 µA under the specified condition. System pulse/ESD validation remains mandatory.
+- Provide an ACT45B-510-2P-TL003 footprint, DNP with 0 Ω bypasses by default. Populate only if emissions/immunity testing justifies it.
 - Provide optional split 120 Ω termination as two 60.4 Ω-class resistors plus center capacitor **DNP/OFF by default**. `VERIFIED_DATASHEET`: TI states a high-speed CAN bus is terminated by 120 Ω at each physical end and split termination may filter common-mode noise. `CALCULATED`: adding 120 Ω in parallel with the already terminated vehicle's effective 60 Ω produces `60 || 120 = 40 Ω`, an improper extra load. Populate only for isolated bench use where this node is an actual endpoint.
 - Keep the OBD branch short, route CANH/L as a pair, put TVS/filtering at entry, avoid long test-point stubs and verify unpowered leakage. The recommended transceiver specifies high-impedance bus pins when unpowered.
 - `VERIFIED_DATASHEET`: TCAN3404-Q1 bus loading is at least 13 kΩ single-ended and 25 kΩ differential, with at most 40 pF to ground and 20 pF differential; unpowered bus leakage is at most 5 µA under the stated test. With the optional terminator DNP, this is a high-impedance stub rather than a third terminator. Add TVS/choke parasitics to the final signal-integrity budget.
@@ -229,18 +229,18 @@ Provide an onboard, PWM-capable MOSFET low-side driver with default-off gate bia
 | OBD and USB present | Higher protected vehicle source normally supplies the buck; USB path blocks reverse current. USB remains data-connected and must not receive power from OBD. No current flows to OBD pin 16 from USB. |
 | Neither present | All rails off. |
 
-Preserve ESP32-S3 native USB on GPIO19/20, provide USB-C sink CC pull-downs and connector-local low-capacitance ESD. Without verified Type-C current advertisement, limit USB-only configured load to 500 mA at VBUS (`DESIGN_REQUIREMENT`); do not enable shift-light/display 5 V exports. The exact reverse-blocking/source-OR part is unresolved because parked leakage, forward drop, current limit and dead-battery behavior must be compared from guaranteed data. TPS2121-class active muxes with hundreds of microamps IQ are disfavored in the parked path.
+Preserve ESP32-S3 native USB on GPIO19/20 and use USBLC6-2SC6Y connector ESD, Type-C sink CC pull-downs, TPS2553QDBVRQ1 current limiting, and PMEG6030EP-Q reverse isolation. With 43.2 kΩ ILIM, the TI table equation gives 604.6 mA nominal and approximately 544.3–673.1 mA bounds (`CALCULATED`); firmware/configuration still limits USB-only load to 500 mA and keeps AUX5 exports off. GCT USB4105 is provisional pending mechanical confirmation.
 
 ## Decision table
 
 | Item | RejsaCAN v3.4 | Telemetry v1 proposal | Reason | Confidence |
 |---|---|---|---|---|
-| Input protection | DSS34 + MF-MSMF110/16-2 + SMF30A | Coordinated fuse, reverse MOSFET, automotive TVS/surge control and damped filter after pulse profile | Existing values do not prove load-dump/reverse/energy coordination | High architecture; low exact parts |
-| Main regulator | LMR14006X, 600 mA class | 2 A low-IQ automotive buck; LMQ66420-Q1 preferred candidate | 1.05 A calculated 3.3 V peak envelope and parked IQ target | High rating; medium candidate |
-| Secondary regulator(s) | MT9700 switched 3.3 V load switch | Separate GNSS, SD and display switches plus switched 2 A AUX5 converter | Isolation, inrush/fault control and 5 V external compatibility | High architecture |
-| Always-on rail | Common 3.3 V only while buck held | MAIN_3V3 always-on in parked sleep; peripherals independently off | CAN/timer/button wake with 0.161 mA estimated input | High pending measurement |
+| Input protection | DSS34 + MF-MSMF110/16-2 + SMF30A | 0437002A WRA, LM74502HQDDFRQ1, 2× DMT6007LFGQ-7; LDP01-28AY/filter provisional | Existing values do not prove load-dump/reverse/energy coordination | Frozen controller/MOSFET/fuse; clamp blocked on pulse profile |
+| Main regulator | LMR14006X, 600 mA class | LMQ66420MC3RXBRQ1, 2 A | 1.05 A calculated 3.3 V peak envelope and parked IQ target | Silicon frozen; passives/thermal pending |
+| Secondary regulator(s) | MT9700 switched 3.3 V load switch | TPS22919QDCKRQ1 ×4 plus LMQ66420 AUX5 | Isolation, inrush/fault control and 5 V external compatibility | Silicon frozen |
+| Always-on rail | Common 3.3 V only while buck held | MAIN_3V3 always-on in parked sleep; peripherals independently off | CAN/timer/button wake with 0.371 mA bounded input | High pending measurement |
 | CAN transceiver | SN65HVD230DR | TCAN3404-Q1 | AEC-Q100, much lower standby, WUP, wider bus fault/common mode | High |
-| CAN protection | No dedicated CAN TVS/choke evident | AEC-Q101 dual CAN TVS; DNP choke footprint | Connector ESD/transient robustness and test flexibility | High concept; medium exact TVS |
+| CAN protection | No dedicated CAN TVS/choke evident | ESDCAN04-2BWY; ACT45B-510-2P-TL003 DNP footprint | Connector ESD/transient robustness and test flexibility | Frozen |
 | CAN termination | 120 Ω cut/jumper concept | Optional split 120 Ω, DNP/OFF default | OBD node joins already terminated vehicle; extra 120 Ω yields 40 Ω effective | High |
 | Sleep strategy | Buck hold or hardware off | ESP deep sleep + CAN standby; all peripherals off | Reliable wake and low measured-risk complexity | High |
 | CAN wake | Only while common 3.3 V remains | TCAN3404 WUP on RXD to ESP wake input | Direct low-IQ wake path | High transceiver; medium GPIO until bench test |
@@ -254,9 +254,9 @@ Preserve ESP32-S3 native USB on GPIO19/20, provide USB-C sink CC pull-downs and 
 ## Unresolved items and validation gates
 
 - Agree the actual 12 V electrical pulse, cranking, jump-start, ESD and temperature test profile; then select and calculate the protection chain.
-- Verify LMQ66420-Q1 exact guaranteed IQ/shutdown, minimum VIN, component values, thermal/EMI behavior and transient headroom before selection.
-- Confirm GPIO13 deep-sleep wake behavior and all power-off signal isolation in an ESP32-S3 prototype.
-- Select exact antenna, card, display/adapter, shift-light and buzzer and replace every envelope/assumption with maximum data and measurements.
+- Complete LMQ66420-Q1 inductor/capacitor, loss, stability, thermal/EMI, crank and transient-headroom calculations before schematic release.
+- Confirm GPIO13 CAN wake, GPIO8 vehicle-activity wake, and all power-off signal isolation in an ESP32-S3 prototype.
+- Select the exact active antenna, production card/socket, physical display connector/module adapter, and buzzer; replace remaining envelopes with maximum data and measurements.
 - Validate GNSS 25 Hz configuration/message set and interference with the buck, ESP RF, SPI and external cables.
 - Define ground/chassis strategy, connector families/pin numbering, cable construction and environmental ratings.
 - Bench all USB source combinations and abnormal connections; confirm no reverse current into USB VBUS or OBD battery.

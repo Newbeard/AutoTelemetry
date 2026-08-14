@@ -1,6 +1,6 @@
 # Power architecture baseline
 
-Status: audited 2026-08-14. Detailed classified calculations are authoritative in [`power-budget.md`](power-budget.md); wake, protection, CAN, GNSS, display, shift-light and USB decisions are in [`power-wake-review.md`](power-wake-review.md).
+Status: reconciled to the Task 4 component freeze, 2026-08-14. Detailed calculations are authoritative in [`power-budget.md`](power-budget.md); exact frozen devices and remaining blockers are in [`component-freeze.md`](component-freeze.md) and [`schematic-architecture.md`](schematic-architecture.md).
 
 ## RejsaCAN v3.4 reference path
 
@@ -32,25 +32,29 @@ This is a descriptive reading of the source, not a validation. Exact diode direc
 ## Wake/shutdown distinction
 
 1. **Hardware-off:** when U4 SHDN is deasserted, 3.3 V disappears, so ESP32 and U2 also lose power. v3.4 can turn back on from the voltage threshold or USB, not from CAN.
-2. **ESP32 sleep with main rail on:** GPIO17 holds U4 on. U2 can be placed in standby using GPIO38 high; TI documents receiver-active standby. This establishes feasibility only. Telemetry v1 replaces U2 with TCAN3404-Q1 WUP/standby and must bench-verify GPIO13 deep-sleep wake.
+2. **ESP32 sleep with main rail on:** GPIO17 holds U4 on. U2 can be placed in standby using GPIO38 high; TI documents receiver-active standby. This establishes reference feasibility only. Telemetry v1 uses TCAN3404DRQ1 WUP/standby with CAN_RX on GPIO13 and a separate vehicle-activity wake input on GPIO8; both wake paths require prototype verification.
 3. **Active CAN:** GPIO38 low selects high-speed mode; high impedance with R3 = 10 kΩ sets slope-control behavior. Firmware comments and TI terminology should be aligned in one driver.
 
-## Approved pre-schematic derivative domains
+## Frozen pre-schematic derivative domains
 
 | Domain | Candidate loads | Control intent | Open issue |
 |---|---|---|---|
 | Always-on/vehicle sense | Gated detector/divider, ESP wake inputs | Hardware/ESP | ≤15 µA OBD-input allocation (`DESIGN_REQUIREMENT`) |
-| MAIN_3V3 | ESP32-S3, TCAN3404-Q1, switched branch inputs | Low-IQ automotive buck | ≥2.0 A (`DESIGN_REQUIREMENT`); LMQ66420-Q1 preferred candidate, not selected |
-| GNSS_3V3 | NEO-M9N and antenna-bias controls | Independent load switch | ≥200 mA; off parked (`DESIGN_REQUIREMENT`) |
-| SD_3V3 | microSD | Independent load switch | ≥250 mA; off parked (`DESIGN_REQUIREMENT`) |
-| DISPLAY_3V3 | external module | Independent switch/BL control | ≥400 mA; off parked (`DESIGN_REQUIREMENT`) |
-| AUX5 | display option, shift light, buzzer option | Independent 2 A automotive converter | ≥2.0 A aggregate; off parked (`DESIGN_REQUIREMENT`) |
+| MAIN_3V3 | ESP32-S3, TCAN3404DRQ1, switched branch inputs | LMQ66420MC3RXBRQ1 | ≥2.0 A; rail remains on while parked |
+| GNSS_3V3 | NEO-M9N and antenna-bias controls | TPS22919QDCKRQ1 | ≥200 mA; off parked |
+| SD_3V3 | microSD | TPS22919QDCKRQ1 | ≥250 mA; off parked |
+| DISPLAY_3V3 | external module | TPS22919QDCKRQ1 and 2N7002KQ BL control | ≥400 mA; off parked |
+| AUX5 | display option and shift-light source | LMQ66420MC3RXBRQ1 | ≥2.0 A aggregate; off parked; enabled by GPIO21 |
+| DISPLAY_5V | optional display rail | TPS22919QDCKRQ1 from AUX5 | ≥600 mA; mutually exclusive with incompatible display power |
+| SHIFT_5V | external light | TPS1H100BQPWPRQ1 from AUX5 | 1.0 A protected output; cable ≤0.5 m |
 
 `CALCULATED`: the 3.3 V simultaneous peak envelope is 1.050 A; after 25% margin it is 1.313 A, so the required regulator class is ≥2.0 A. `CALCULATED`: the 5 V external-load sum is 1.70 A and 15% margin produces 1.955 A, so AUX5 is ≥2.0 A. See the source-to-formula chain in `power-budget.md`.
 
 ## Parked result
 
-The complete tree includes protection, buck IQ, vehicle sensing, TCAN standby, the ESP32 module branch, wake logic, disabled switches, protection leakage and miscellaneous leakage. `CALCULATED`: subtotal 80.3 µA and 100% allowance give ≤161 µA (0.161 mA) at 12 V. GNSS backup and LEDs are off. This supports the <1 mA requirement and <0.5 mA stretch target on paper; complete-board measurements over voltage/temperature remain mandatory.
+The complete tree includes the conservatively bounded 110 µA LM74502H-Q1/input-protection allocation, buck IQ, vehicle sensing, TCAN standby, ESP32 branch, wake logic, disabled switches, TCA6408A/residual logic, protection leakage, and miscellaneous leakage. `CALCULATED`: subtotal 185.3 µA and a 100% allowance give ≤370.6 µA (0.371 mA) at 12 V. GNSS backup and LEDs are off. This supports the <1 mA requirement and leaves only 0.129 mA to the <0.5 mA stretch target; complete-board measurements over voltage/temperature remain mandatory.
+
+The vehicle input freeze is 0437002A WRA fuse → provisional LDP01-28AY TVS → LM74502HQDDFRQ1 with back-to-back DMT6007LFGQ-7 MOSFETs → provisional damped filter → converters. The TVS and filter remain provisional because the exact vehicle pulse profile, source impedance, clamp energy, ringing, and downstream derating are not yet defined. At the 14.108 W calculated output envelope and an assumed 80% efficiency, 12 V input current is 1.470 A; the 2 A fuse has 36.1% current margin (`ASSUMPTION` + `CALCULATED`), not a proven hot hold/trip result.
 
 ## Required calculations and tests before layout
 

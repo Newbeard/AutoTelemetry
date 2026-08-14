@@ -1,6 +1,6 @@
 # Telemetry v1 requirements
 
-Status: pre-schematic requirements baseline, audited 2026-08-14. Items marked **TBD** require review or measurement before schematic capture. Numerical evidence uses `VERIFIED_DATASHEET`, `CALCULATED`, `DESIGN_REQUIREMENT`, and `ASSUMPTION` as defined in [`power-budget.md`](power-budget.md).
+Status: Task 4 component-freeze baseline, audited 2026-08-14. Remaining blockers are listed in [`schematic-architecture.md`](schematic-architecture.md). Numerical evidence uses `VERIFIED_DATASHEET`, `CALCULATED`, `DESIGN_REQUIREMENT`, and `ASSUMPTION` as defined in [`power-budget.md`](power-budget.md).
 
 ## Scope and invariants
 
@@ -10,6 +10,8 @@ Status: pre-schematic requirements baseline, audited 2026-08-14. Items marked **
 - Support permanent installation with average parked input current <1.0 mA over the specified parked voltage/temperature range (`DESIGN_REQUIREMENT`); <0.50 mA at 12 V and 25 °C is the stretch target (`DESIGN_REQUIREMENT`).
 - Retain USB firmware download, recovery, configuration, and debugging, plus microSD logging.
 - Do not claim automotive robustness until the design has defined and passed relevant electrical, EMC, thermal, and environmental tests.
+- Telemetry v1 includes only 12 V passenger-vehicle OBD power/protection/wake, ESP32-S3, one Classical CAN channel, OBD/ISO-TP/UDS readiness, onboard NEO-M9N with external active antenna, microSD, USB-C, BLE, interchangeable display, shift light, onboard audible alarm, MODE, status, and debug.
+- TPMS, tire-temperature sensing, IMUs, analog sensor hubs, external sensor networks, a second CAN channel, and unrelated expansion are explicitly excluded from Telemetry v1.
 
 ## Functional requirements
 
@@ -18,19 +20,19 @@ Status: pre-schematic requirements baseline, audited 2026-08-14. Items marked **
 | CAN-01 | One Classical CAN channel using the ESP32-S3 TWAI controller | Receive and transmit 11/29-bit CAN at required vehicle bit rates; listen-only mode supported |
 | CAN-02 | Generic OBD-II, ISO-TP, UDS, and raw/vehicle-profile decoding | Hardware must not couple protocol choice to vehicle or display choice |
 | CAN-03 | Configurable CAN termination | Optional split 120 Ω (`DESIGN_REQUIREMENT`), DNP/OFF by default for OBD use; bench-only population documented |
-| GNSS-01 | Onboard u-blox NEO-M9N with external active antenna | UART communication; target navigation rate 20–25 Hz subject to configured constellations/messages and link budget |
+| GNSS-01 | Onboard NEO-M9N-00B with external active antenna | UART at 230,400 bit/s; target navigation rate 20–25 Hz subject to configured constellations/messages and link budget; professional-grade qualification limitation recorded |
 | GNSS-02 | U.FL antenna interface and active-antenna bias | Implement only from the current u-blox integration manual and selected antenna data sheet |
 | GNSS-03 | Power control | Software-controlled GNSS power or backup strategy, with cold/warm-start trade-off documented |
 | DSP-01 | Interchangeable external display | Initial GC9A01 240×240 SPI display; later ST7789/AMOLED drivers without core redesign |
-| DSP-02 | Display connector | Ground, protected/specified power, SPI SCLK/MOSI/(optional MISO), CS, DC, reset, and PWM-capable backlight control |
-| SHF-01 | External shift-light output | ESP32-controlled, independent of RaceChrono, with a driver sized for a specified external module rather than GPIO load current |
-| ALM-01 | Audible alarm | Onboard buzzer or external connector driven through a transistor/MOSFET; alarm load and acoustic target TBD |
+| DSP-02 | Display connector | Frozen 14-position logical contract, switched 3.3 V/400 mA and optional 5 V/600 mA, cable ≤200 mm, initial SPI ≤20 MHz; physical connector remains a mechanical blocker |
+| SHF-01 | External shift-light output | TPS1H100B-Q1 protected 5 V/1 A and AHCT buffer for an 8–10 pixel short-cable load; cable ≤0.5 m |
+| ALM-01 | Audible alarm | Onboard-only, MOSFET-driven ≤200 mA branch; exact transducer and clamp population TBD |
 | LOG-01 | microSD logging | Concurrent CAN/GNSS logging without electrical bus contention with the display |
 | BLE-01 | RaceChrono BLE link | BLE profile/protocol to be confirmed against current RaceChrono documentation |
 | EXP-01 | Expansion and debug | Expose I2C, UART/debug access, useful spare GPIO, and named test points for CAN-H/L, vehicle input, 3.3 V, GNSS UART, and ground |
 | PWR-01 | Permanent OBD installation | Verify active, transient and complete parked current against [`power-budget.md`](power-budget.md); release limit <1.0 mA, stretch <0.50 mA at 12 V/25 °C (`DESIGN_REQUIREMENT`) |
 | PWR-02 | Wake sources | Rail-on ESP32/CAN standby wake from CAN, timer, MODE, vehicle-voltage hint and USB (`DESIGN_REQUIREMENT`) |
-| PWR-03 | Power domains | ≥2.0 A MAIN_3V3 and ≥2.0 A switched AUX5 capacities, with separately switchable GNSS, SD and display branches (`DESIGN_REQUIREMENT`, derived in `power-budget.md`) |
+| PWR-03 | Power domains | LMQ66420MC3RXBRQ1 for ≥2.0 A MAIN_3V3 and ≥2.0 A switched AUX5; TPS22919-Q1 separately switches GNSS, SD, DISPLAY_3V3, and DISPLAY_5V |
 | PWR-04 | USB source isolation | Support vehicle-only, USB-only, simultaneous and unpowered cases with no back-feed to OBD pin 16 or USB VBUS (`DESIGN_REQUIREMENT`) |
 | FW-01 | Modular firmware | Independent CAN, OBD-II, ISO-TP, UDS, vehicle profile, GNSS, normalized data core, BLE, display, shift-light, alarms, logger, and power modules |
 
@@ -58,6 +60,7 @@ Status: pre-schematic requirements baseline, audited 2026-08-14. Items marked **
 ## Safety and validation requirements
 
 - Preserve ESP32-S3 GPIO19/GPIO20 for native USB and do not load GPIO0/GPIO3/GPIO45/GPIO46 without a strap analysis.
+- Preserve GPIO42 for JTAG MTMS. microSD CS is GPIO11, not GPIO45; low-speed rail enables and card detect are assigned to TCA6408AQPWRQ1.
 - Validate OBD input against a written 12 V passenger-vehicle transient profile. 24 V operation is explicitly not a Telemetry v1 requirement (`DESIGN_REQUIREMENT`). An input-voltage range is not a transient-survival specification.
 - Review CAN protection, common-mode range, ESD, termination, grounding, and non-automotive-qualified reference components.
 - Perform regulator worst-case input/transient, load, thermal, stability, startup, shutdown, reverse-polarity, and back-power analyses.
@@ -69,9 +72,9 @@ Status: pre-schematic requirements baseline, audited 2026-08-14. Items marked **
 
 - Exact automotive pulse severity, temperature grade, enclosure, cable environment, compliance markets, and production volume.
 - Whether a later hardware-off CAN wake variant is worth its added 5 V/AON sequencing; it is not required for Telemetry v1 unless rail-on measurements fail.
-- Display supply voltage/current and cable/connector family.
-- Shift-light and buzzer voltage, current, wiring, and fault protection.
-- Whether GNSS backup supply and retained ephemeris are worth their parked-current cost.
+- Exact physical display connector family and module adapters; the electrical rail/current/cable contract is frozen.
+- Exact onboard buzzer transducer and whether the provisional inductive clamp is populated.
+- GNSS V_BCKP follows switched GNSS power in v1; host save/restore performance remains to be tested.
 - Firmware platform/dependency versions, profile/config serialization formats, canonical wire encoding, security/authentication model, update mechanism, and runtime resource budgets.
 - Exact profile matching policy, supported diagnostic services per vehicle, and the criteria for detecting/coexisting with another scan tool.
 - First-party app platforms and BLE/Wi-Fi/USB transport bindings.

@@ -73,6 +73,8 @@ The first derivative hardware revision is referred to as:
 
 Telemetry v1 is expected to retain the useful RejsaCAN ESP32-S3 architecture while adding the missing telemetry-specific functions.
 
+Telemetry v1 scope is permanently limited to 12 V passenger-car OBD power/protection/sleep-wake, ESP32-S3, one Classical CAN channel, OBD-II/ISO-TP/UDS readiness, onboard NEO-M9N with an external active antenna, microSD, USB-C, BLE, an interchangeable external display, a short-cable shift light, onboard audible alarm, MODE, status, and debug. TPMS, tire-temperature sensing, IMUs, analog sensor hubs, external sensor networks, a second CAN channel, and unrelated features are excluded unless a later task explicitly changes the hardware revision and this rule.
+
 Expected additions include:
 
 ### GNSS

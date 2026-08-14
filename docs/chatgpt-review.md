@@ -1,176 +1,103 @@
+# Telemetry v1 Task 4 review packet
+
 ## Task completed
 
-Completed the third pre-implementation Telemetry v1 architecture phase. Defined the product monorepo, normalized telemetry core, three vehicle-support levels, declarative profiles, CAN modes and diagnostic scheduling, independent outputs, first-party device protocol, fault isolation, centralized configuration, dependency policy, enclosure/mount architecture, and product-wide test strategy. Added ownership-only scaffolds. No schematic, PCB, firmware/app implementation, source dependency, CAD geometry, or manufacturing output was created.
+Completed the component-freeze and schematic-architecture gate for Telemetry v1. Audited the Task 2 power/wake work, selected exact major devices where evidence permitted, defined the schematic sheet hierarchy and power states, froze the GPIO/peripheral map, recorded lifecycle/availability/cost evidence, and identified the remaining release blockers. No schematic, PCB, firmware, CAD, manufacturing, procurement, or copied third-party design files were created or changed.
 
 ## Files changed
 
-- `CODEX.md`
-- `docs/architecture.md`
-- `docs/requirements.md`
-- `docs/hardware-spec.md`
-- `docs/interfaces.md`
-- `docs/telemetry-data-model.md`
-- `docs/device-protocol-architecture.md`
-- `docs/open-source-dependencies.md`
-- `docs/enclosure-architecture.md`
-- `docs/test-architecture.md`
-- `docs/chatgpt-review.md`
-- `hardware/telemetry-v1/README.md`
-- `hardware/telemetry-v1/kicad/README.md`
-- `hardware/telemetry-v1/bom/README.md`
-- `hardware/telemetry-v1/manufacturing/README.md`
-- `firmware/README.md`
-- `firmware/main/README.md`
-- `firmware/core/README.md`
-- `firmware/can/README.md`
-- `firmware/obd/README.md`
-- `firmware/isotp/README.md`
-- `firmware/uds/README.md`
-- `firmware/gnss/README.md`
-- `firmware/vehicle_profiles/README.md`
-- `firmware/racechrono/README.md`
-- `firmware/protocol/README.md`
-- `firmware/display/README.md`
-- `firmware/display/manager/README.md`
-- `firmware/display/render/README.md`
-- `firmware/display/drivers/README.md`
-- `firmware/display/layouts/README.md`
-- `firmware/shiftlight/README.md`
-- `firmware/alarms/README.md`
-- `firmware/logger/README.md`
-- `firmware/lap_engine/README.md`
-- `firmware/power/README.md`
-- `firmware/config/README.md`
-- `profiles/README.md`
-- `protocol/README.md`
-- `apps/companion/README.md`
-- `tools/README.md`
-- `tools/dbc/README.md`
-- `tools/can-analysis/README.md`
-- `tools/profile-tools/README.md`
-- `tools/log-tools/README.md`
-- `enclosure/core_device/README.md`
-- `enclosure/displays/README.md`
-- `enclosure/displays/gc9a01/README.md`
-- `enclosure/vehicle_mounts/README.md`
-- `enclosure/vehicle_mounts/bmw_e81/README.md`
-- `tests/README.md`
-- `tests/fixtures/README.md`
+- Created `docs/component-freeze.md`.
+- Created `docs/schematic-architecture.md`.
+- Updated `CODEX.md`.
+- Updated `docs/architecture.md`.
+- Updated `docs/hardware-spec.md`.
+- Updated `docs/interfaces.md`.
+- Updated `docs/power.md`.
+- Updated `docs/power-budget.md`.
+- Updated `docs/power-wake-review.md`.
+- Updated `docs/requirements.md`.
+- Updated `docs/rejsacan-analysis.md`.
+- Updated `docs/telemetry-v1-change-list.md`.
+- Replaced this review packet, `docs/chatgpt-review.md`.
 
 ## Engineering findings
 
-- The product needs one central Normalized Telemetry Data Core. Producers publish typed candidates with canonical channel ID, unit, source, capture/source time, validity, age, rate and quality; outputs consume the selected canonical sample and never decode vehicle frames.
-- Source arbitration is deterministic and channel-specific: eligibility/validity, configured priority, source quality, freshness, hysteresis/minimum hold, then stable source identity. Loss of the selected source triggers fallback rather than substituting zero or an unmarked stale value.
-- Vehicle support is layered: Level 1 Generic OBD-II, Level 2 known-profile passive CAN, and Level 3 explicitly enabled manufacturer diagnostics over ISO-TP/UDS. A weak/mismatched profile must not enable speculative requests.
-- Profiles require frame ID, 11/29-bit format, bit rate, bit extraction, byte order, signedness, scale, offset, unit, destination, rate, validity, diagnostic addressing/request/response, source priority, matching, provenance and metadata. The YAML example is fictitious and conceptual.
-- DBC represents much passive CAN extraction but not the full contract. It can be reviewed/imported into the canonical schema. OpenDBC remains optional host-side input, not a runtime dependency.
-- LISTEN_ONLY is non-transmitting and must ultimately use controller/driver enforcement. In DIAGNOSTIC_POLLING, only one scheduler may transmit; it owns budgets, ISO-TP sessions, timeouts, negative responses, cancellation, backoff and coexistence.
-- Active diagnostic clients may contend or alter ECU state. Universal coexistence cannot be guaranteed; the device must expose mode/state, schedule conservatively, report suspected contention, and suspend diagnostics while retaining passive acquisition.
-- RaceChrono is a replaceable normalized-data output. The first-party API is transport-neutral with independent API/schema/transport versions and BLE, Wi-Fi and USB bindings.
-- Display manager, renderer, driver and layout are independent; headless operation is supported. Shift-light is independent. Alarm rules/state/presentations are separate. Logger and optional lap engine are independent consumers.
-- Conceptual FreeRTOS responsibilities use bounded queues. Acquisition never waits on display, storage or clients; services expose pressure/health, use deadlines, bounded retry, isolated restart and watchdog escalation.
-- Configuration is centralized, versioned, validated, atomic, migratable, provenance-aware and recoverable to last-known-good/safe defaults.
-- Core-device enclosure, display enclosure and vehicle mount are separate parametric products. Native CAD is authoritative, STEP is interchange, and meshes are derived. Electrical drawings/limits control CAD.
-- Tests cover core arbitration, profile qualification, replay, diagnostics/coexistence, GNSS, outputs, transport parity, migrations, overload/fault isolation, power transitions, HIL, and separately approved electrical/RF/mechanical plans.
-- The customer-mount workflow records vehicle/year/trim/location and selected display, then uses traceable drawings, photos/scales, caliper measurements, scans or characterized photogrammetry; it proceeds through parametric modeling, prototype, fit/safety validation, revision, controlled output, and reusable-library release.
-- RaceChrono's tutorial links its DIY repository, but no explicit license was found in the reviewed root. `rc_can_ble` and `rc_can_ble_fw` likewise have no confirmed license. They are reference-only; no source was copied.
-- `esp32_obd2`, `isotp-c`, `iso14229`, OpenDBC and SavvyCAN declare MIT licenses. ESP-IDF declares Apache-2.0. SparkFun u-blox GNSS v3 separates MIT code from CC BY-SA hardware. `ubxlib` is Apache-2.0 with exceptions/notices and is archived, so it is reference-only by default.
-- No root license was found for the reviewed RejsaCAN upstream/fork. Distribution and derivative permissions remain unresolved.
-- Final architecture scaffold:
-
-```text
-hardware/telemetry-v1/{kicad,bom,manufacturing}
-firmware/{main,core,can,obd,isotp,uds,gnss,vehicle_profiles,racechrono,protocol,display,shiftlight,alarms,logger,lap_engine,power,config}
-firmware/display/{manager,render,drivers,layouts}
-profiles/
-protocol/
-apps/companion/
-tools/{dbc,can-analysis,profile-tools,log-tools}
-enclosure/{core_device,displays/gc9a01,vehicle_mounts/bmw_e81}
-tests/fixtures/
-```
+- The 1.313 A MAIN_3V3 and 1.955 A AUX5 calculated capacities support freezing 2 A LMQ66420-Q1 silicon, but exact inductors, effective capacitance, losses, stability, copper area, and enclosure thermal rise remain schematic calculations.
+- Replacing the former 5 µA input-protection placeholder with the LM74502H-Q1 110 µA maximum operating-current bound changes the parked subtotal from 80.3 µA to 185.3 µA. A 100% allowance produces 370.6 µA, or 0.371 mA at 12 V. This remains below 1 mA and leaves 0.129 mA to the 0.5 mA stretch target.
+- The calculated simultaneous output envelope is 14.108 W. At an assumed 80% efficiency and 12 V input, current is 1.470 A; a 2 A fuse therefore has 36.1% nominal current margin. This does not establish fuse hot hold/trip or pulse performance.
+- TCAN3404DRQ1 provides the required 3.3 V rail-on wake architecture with 17 µA maximum standby. The OBD node must remain high impedance: split termination is DNP/OFF because adding 120 Ω to a normally terminated 60 Ω vehicle bus yields 40 Ω.
+- NEO-M9N-00B meets the function target but is professional-grade rather than automotive-grade. The RF connector is frozen for the prototype only; the exact active antenna remains unresolved.
+- ESP32-S3-WROOM-1-N16R8 needs PSRAM ECC for the documented +85 °C ambient extension. Usable PSRAM becomes approximately 7.5 MB; the module still is not automotive-qualified.
+- The source evidence and calculations are detailed in `docs/component-freeze.md`, `docs/schematic-architecture.md`, `docs/power-budget.md`, and `docs/power-wake-review.md`.
 
 ## Decisions made
 
-- Adopt the normalized core as the only shared data boundary.
-- Keep canonical profiles under `profiles/`, with runtime handling and host tools separated; keep DBC/OpenDBC optional at the import boundary.
-- Default unknown/mismatched vehicles to LISTEN_ONLY and route all diagnostics through one scheduler; prohibit output-triggered/arbitrary production CAN transmission.
-- Keep RaceChrono, first-party protocol, display, shift-light, alarms, logger and lap engine replaceable and fault-isolated.
-- Reserve a transport-independent first-party protocol, centralized configuration owner, and independent core/display/mount mechanical layers.
-- Create README-only architecture scaffolds, including hardware `kicad`, `bom` and `manufacturing`, without authorizing implementation.
-- Preserve every earlier power, CAN, GNSS/RF, USB and GPIO hardware decision unchanged.
+- Froze ESP32-S3-WROOM-1-N16R8, TCAN3404DRQ1, ESDCAN04-2BWY, LMQ66420MC3RXBRQ1, LMQ66420MC5RXBRQ1, TPS22919QDCKRQ1, TCA6408AQPWRQ1, LM74502HQDDFRQ1, DMT6007LFGQ-7, 0437002A/WRA, NEO-M9N-00B, ESDAXLC6-1BT2Y, USBLC6-2SC6Y, TPS2553QDBVRQ1, PMEG6030EP-Q, TPS1H100BQPWPRQ1, CAHCT1G126QDCKRQ1, and 2N7002KQ-7 for their stated roles.
+- Froze ACT45B-510-2P-TL003 as a DNP CAN-choke footprint with populated 0 Ω bypasses. Split CAN termination is two 60.4 Ω resistors plus 4.7 nF, all DNP and isolated by normally open service links.
+- Kept LDP01-28AY/input filtering, microSD socket, USB-C receptacle, physical display connector, active antenna, and buzzer transducer provisional because required electrical or mechanical inputs are absent.
+- Froze the hybrid rail-on state architecture and the 14-position display electrical contract.
+- Permanently excluded TPMS, tire-temperature sensing, IMU, analog sensor hubs, external sensor networks, a second CAN channel, and unrelated features from Telemetry v1.
 
 ## Assumptions
 
-- ESP-IDF/FreeRTOS is the likely target because Telemetry v1 uses ESP32-S3, but framework/version selection remains open.
-- Runtime responsibilities may map to tasks or services; count/priorities are not fixed.
-- Generic OBD-II is a fallback only where vehicle and supported PIDs permit it.
-- A user/configuration mechanism will select CAN mode and confirm uncertain profile matches.
-- BLE, Wi-Fi and USB are candidate protocol bindings; simultaneous availability is not promised.
-- All conceptual profile identifiers, bit positions, scaling, rates, request bytes, priorities and matching data are fictitious `ASSUMPTION` values.
-- The initial channel registry is extensible and is not a frozen wire enumeration.
-- Display cable <=200 mm, SPI <=20 MHz, and shift-light long-cable review above 0.5 m remain prior `DESIGN_REQUIREMENT` values.
-- BMW E81/N43, GC9A01 and RaceChrono are first fixtures/integrations, not architectural special cases.
-- A future CAD toolchain can provide native parametric CAD, STEP, and optional derived 3MF/STL.
+- The input-current calculation assumes 80% conversion efficiency at the constructed simultaneous maximum.
+- The parked conversion calculation retains the Task 2 60% low-load efficiency assumption where 3.3 V rail currents are referred to 12 V.
+- The preliminary major-electronics price subtotal is an approximately ±20% budget snapshot, not a quote or complete manufacturing cost.
+- The passive GNSS short limiter assumes approximately 2.2 Ω additional series resistance beyond its 22 Ω resistor.
+- Connector and enclosure requirements will not increase the already frozen rail-current contracts without reopening this gate.
 
 ## Uncertainties / unresolved questions
 
-- Firmware/build system, exact dependencies, update/rollback mechanism and product license.
-- Frozen v1 channel registry, profile/config syntax, wire encoding, log format and migration policy.
-- Task/queue/heap/stack/watchdog budgets and measured deadlines.
-- Diagnostic rate/bus budgets, tester detection, cleanup and per-vehicle safe service allowlists.
-- Threat model, pairing/authentication, authorization, key storage, profile/firmware signing and writable API policy.
-- RaceChrono interoperability details and permission for example reuse; current design avoids reuse.
-- RejsaCAN derivative/distribution permission and exact licenses/notices for every library, DBC, capture, asset and transitive dependency.
-- First-party app platforms and concrete transport bindings.
-- Fixture provenance, redistribution permission, VIN/location redaction and storage policy.
-- PCB mechanical data, enclosure environment/material/process, mount load cases, exact display geometry and BMW E81 measurements.
-- Bench/HIL equipment, test/CI framework, tolerances, vehicle safety procedure and compliance targets.
+- The approved 12 V passenger-vehicle crank, jump-start, reverse, ISO 7637-2 pulse, load-dump source impedance/energy, ISO 10605 ESD, and temperature profile is missing; therefore LDP01-28AY and the EMI filter cannot be finalized.
+- Exact LMQ66420 magnetics, capacitors, feedback/configuration, stability, losses, junction temperature, copper area, and transient headroom are uncalculated.
+- The final OBD/display/shift-light connector mechanics, production microSD socket, active GNSS antenna, and onboard buzzer are not selected.
+- Vehicle-activity sensing, protected ADC divider, PWR_FAULT_N, connector-side ESD arrays, and branch-discharge details require exact schematic calculations.
+- GPIO13 CAN wake, GPIO8 vehicle-activity wake, power-off signal isolation, USB dual-source behavior, GNSS 25 Hz throughput, RF coexistence, and complete parked current require prototype measurement.
 
 ## Risks
 
-- Incorrect matching or diagnostic definitions can create unintended traffic or ECU state changes.
-- Poor arbitration thresholds can oscillate or conceal degraded data.
-- Unbounded/shared blocking work or broad watchdog resets can let an optional output disrupt acquisition.
-- Transport-specific or RaceChrono-derived internal models would cause permanent coupling.
-- Unlicensed examples, CAD, DBCs or captures can block lawful distribution; public access is not permission.
-- Vehicle captures and GNSS logs can expose VIN, driving and location data.
-- Generic mechanical assumptions can obstruct safety systems/controls, create projectiles, overheat, fatigue, or falsely claim compatibility.
-- The architecture may exceed ESP32-S3 resources until concurrency is measured.
-- Coexistence detection cannot prove another tester is absent on every vehicle.
+- A pulse profile more severe than the provisional clamp can invalidate the TVS, 60 V MOSFETs, regulator headroom, fuse, and filter together.
+- The 0.5 mA parked stretch target has only 0.129 mA calculated margin before complete-netlist leakage and temperature measurements.
+- NEO-M9N-00B, the prototype U.FL, ESP32 module, and provisional connectors may not meet the eventual automotive environmental/lifecycle requirement.
+- AUX5 reaches 1.955 A only under the constructed full simultaneous envelope, leaving little nominal margin on a 2 A converter; load policy and thermal testing are required.
+- Shared SPI/display cabling and the GNSS RF section create signal-integrity and EMC risks that component selection alone cannot close.
 
 ## GPIO / peripheral changes
 
-No GPIO or peripheral allocation changed. The preliminary allocation in `docs/interfaces.md` remains intact. No driver was implemented and no pin was reserved, released or reassigned.
+| Resource | Previous Task 2 allocation | Frozen Task 4 allocation | Reason |
+|---|---|---|---|
+| GPIO11 | spare/status candidate | microSD CS | Removes a removable-card load from strap GPIO45 |
+| GPIO17 | power-hold legacy concept | onboard buzzer PWM | New architecture no longer uses the legacy hold circuit |
+| GPIO18 | spare | TCA6408A interrupt | Supports low-speed rail/status expansion |
+| GPIO42 | buzzer proposal | reserved JTAG MTMS test pad | Preserves debug and eliminates the conflict |
+| GPIO45 | microSD CS | reserved strap/test pad | Deterministic reset/boot behavior |
+| TCA6408A P0–P7 | none | GNSS_EN, SD_EN, DISP3_EN, DISP5_EN, SHIFT5_EN, SD_CD_N, STATUS_LED_N, reserved | Preserves direct MCU pins while hardware pull-downs keep rails off at reset |
+
+All other assignments are listed in `docs/interfaces.md` and `docs/schematic-architecture.md`.
 
 ## Power / CAN / RF impact
 
-- **Automotive power:** no topology, component, capacity, parked-current or wake decision changed; only shutdown/test responsibilities were added.
-- **CAN:** no hardware or bit-rate decision changed; behavior now formally separates LISTEN_ONLY from centralized DIAGNOSTIC_POLLING.
-- **GNSS/RF:** no module, antenna, UART, supply or layout decision changed; GNSS is an independent producer and CAD must respect RF/cable constraints.
-- **USB:** no electrical decision changed; USB is a candidate protocol binding subject to existing source isolation.
-- **ESP32 boot/strapping:** no change; existing GPIO45/microSD and other strap constraints remain.
+- **Automotive power:** frozen controller, MOSFET, fuse, two regulator families, load switches, USB isolation, state sequencing, and a revised 0.371 mA parked envelope. The input TVS/filter remain provisional pending the pulse profile.
+- **CAN:** frozen TCAN3404DRQ1, ESDCAN04-2BWY, DNP ACT45B footprint, and DNP/OFF split termination. Only one Classical CAN channel exists.
+- **GNSS/RF:** frozen NEO-M9N-00B prototype architecture, U.FL-R-SMT-1(10), ESDAXLC6-1BT2Y, 50 Ω path, switched power, and the u-blox bias-T starting topology. No RF layout was performed.
+- **USB:** frozen USBLC6-2SC6Y, TPS2553QDBVRQ1 with 43.2 kΩ ILIM, PMEG6030EP-Q reverse isolation, and ≤500 mA USB-only configured load. The receptacle is mechanically provisional.
+- **ESP32 boot/strapping:** GPIO45 is no longer microSD CS; GPIO0/3/45/46 remain protected strap resources. GPIO42 is reserved for MTMS. PSRAM ECC is mandatory for the +85 °C documented operating extension.
 
 ## Datasheets / primary sources consulted
 
-- Repository `CODEX.md`, current architecture/hardware/interface/power analysis documents, and protected RejsaCAN v3.4 reference material.
-- RaceChrono tutorial and DIY reference: https://racechrono.com/article/2572 and https://github.com/aollin/racechrono-ble-diy-device
-- `rc_can_ble` and firmware: https://github.com/Sergey1560/rc_can_ble and https://github.com/Sergey1560/rc_can_ble_fw
-- `esp32_obd2`: https://github.com/MagnusThome/esp32_obd2
-- ESP-IDF/TWAI: https://github.com/espressif/esp-idf
-- `isotp-c`: https://github.com/lishen2/isotp-c
-- `iso14229`: https://github.com/driftregion/iso14229
-- OpenDBC: https://github.com/commaai/opendbc
-- SparkFun u-blox GNSS v3: https://github.com/sparkfun/SparkFun_u-blox_GNSS_v3
-- u-blox `ubxlib`: https://github.com/u-blox/ubxlib
-- SavvyCAN: https://github.com/collin80/SavvyCAN
-
-No new numerical hardware decision was made, so no additional component datasheet was required.
+- Espressif ESP32-S3-WROOM-1/1U data sheet v1.8 and ESP32-S3 Hardware Design Guidelines.
+- TI TCAN3404-Q1, TCAN1043A-Q1, LMQ664x0-Q1, LM74502H-Q1, TPS22919-Q1, TCA6408A-Q1, TPS2553-Q1, TPS1H100-Q1, and automotive AHCT buffer documentation.
+- NXP TJA1044 and Infineon TLE9251VLE official data/product lifecycle information.
+- ST ESDCANxx-2BWY, LDP01-28AY, ESDAXLC6-1BT2Y, and USBLC6-2SC6Y data sheets.
+- TDK ACT45B, Diodes Incorporated DMT6007LFGQ/2N7002KQ/BAS21WQ, Littelfuse 437A, and Nexperia PMEG6030EP-Q data sheets.
+- u-blox NEO-M9N-00B data sheet R08 and Integration Manual R10; Hirose U.FL specification.
+- GCT USB4105 and Molex 104031-0811 product specifications.
+- Manufacturer lifecycle pages and distributor stock/price pages captured on 2026-08-14; exact links and quantities are recorded in `docs/component-freeze.md`.
 
 ## Recommended next step
 
-Freeze the v1 channel registry, vehicle-profile/config schema subset, dependency baseline, and measured ESP32-S3 runtime resource budgets in a firmware-platform architecture review before implementing any module.
+Complete the input-protection design gate by approving one written 12 V passenger-vehicle crank, jump-start, reverse-battery, ISO 7637-2, load-dump, ISO 10605, and temperature profile and closing the LDP01-28AY/filter calculations against it.
 
 ## STOP condition
 
-The requested third pre-implementation architecture phase is complete. Stop here and wait for review; do not begin schematic capture, PCB layout, firmware/app implementation, CAD geometry, dependency integration, procurement, or manufacturing output.
+Task 4 is complete. Stop here: do not begin schematic capture, KiCad edits, PCB layout, firmware, CAD, manufacturing outputs, procurement, or copied third-party implementation until the review gate is accepted and a separate task authorizes the next stage.

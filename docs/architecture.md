@@ -1,6 +1,6 @@
 # Universal OBD/CAN + GNSS Telemetry Gateway architecture
 
-Status: product architecture baseline for the third pre-implementation phase. This document defines boundaries and responsibilities, not firmware tasks, wire formats, schemas, or code.
+Status: product architecture reconciled to the Task 4 component freeze. This document defines boundaries and responsibilities, not firmware tasks, wire formats, schemas, or code.
 
 ## Product and monorepo boundary
 
@@ -15,6 +15,8 @@ This repository is the monorepo for the complete Universal OBD/CAN + GNSS Teleme
 - core enclosure, reusable display housings, vehicle-specific mounts, and manufacturing documentation.
 
 The upstream RejsaCAN material remains a protected reference subtree. BMW E81/N43 is the first vehicle fixture. GC9A01 is the first display. RaceChrono is the first third-party client. None defines the core architecture.
+
+Telemetry v1 hardware scope is deliberately narrow: 12 V passenger OBD, one Classical CAN channel, ESP32-S3, onboard GNSS, SD, USB-C/BLE, interchangeable display, short-cable shift light, onboard alarm, MODE/status/debug, and parked sleep/wake. TPMS, tire-temperature sensing, IMU, analog sensor hubs, external sensor networks, a second CAN channel, and unrelated additions require a later revision.
 
 ## System architecture
 
@@ -101,7 +103,7 @@ Safe coexistence with OBDLink, scan tools, listeners, or other diagnostic client
 
 The NEO-M9N producer publishes GNSS candidate channels directly into the core. RaceChrono, display, logger, device protocol, and optional lap engine subscribe independently. No GNSS data path is routed “through RaceChrono.”
 
-Hardware assumptions remain authoritative in [`power-budget.md`](power-budget.md) and [`power-wake-review.md`](power-wake-review.md): switched GNSS rail, v1 backup supply off with host save/restore investigated, external active antenna, and preliminary 230,400-bit/s UART. Parser/library selection is unresolved.
+Hardware decisions are authoritative in [`component-freeze.md`](component-freeze.md) and [`schematic-architecture.md`](schematic-architecture.md): NEO-M9N-00B on switched GNSS_3V3, V_BCKP following that rail, protected external active antenna, and 230,400-bit/s UART. Parser/library selection is unresolved.
 
 ## Outputs and optional services
 
