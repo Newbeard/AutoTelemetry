@@ -166,6 +166,47 @@ The future firmware architecture is expected to contain modules for:
 
 Do not make hardware decisions that unnecessarily prevent this modular architecture.
 
+## Product monorepo architecture
+
+Treat this repository as the complete Telemetry product, not only a board fork. Preserve explicit ownership for automotive hardware, firmware, vehicle profiles, protocol specifications, RaceChrono integration, a future first-party app, displays, shift-light, alarms, logging, configuration, engineering tools, enclosure/mount CAD, tests and manufacturing evidence.
+
+The normalized telemetry data core is the mandatory internal boundary. CAN, OBD-II, ISO-TP/UDS and GNSS publish canonical samples with units, timestamps, source, validity and quality. RaceChrono, device protocols, displays, shift-light, alarms, logger and optional lap processing consume this model and must not decode vehicle frames directly.
+
+Support vehicle integration in explicit levels:
+
+1. Level 1: Generic OBD-II.
+2. Level 2: known declarative vehicle profile using passive CAN/DBC-derived definitions.
+3. Level 3: explicitly enabled extended manufacturer diagnostics using ISO-TP/UDS.
+
+Vehicle profiles must be data-driven and reviewable. Keep matching, CAN identifiers and frame format, bit rate, bit extraction, byte order, signedness, scale/offset/unit, destination channel, expected rate, validity, diagnostic addressing/request/response, source priority, provenance and metadata out of output adapters. Do not make DBC or OpenDBC a runtime requirement; importing permitted data into the canonical schema is acceptable when license and provenance are recorded.
+
+LISTEN_ONLY and DIAGNOSTIC_POLLING are distinct operating states. LISTEN_ONLY must not transmit. All diagnostic transmission passes through one bounded scheduler with rate/bus budgets, timeouts, cancellation and backoff, including coexistence policy for other scan tools. Do not add arbitrary CAN transmit or safety-critical actuation to a production profile.
+
+RaceChrono is one replaceable output integration, never the internal model or product-control protocol. First-party services must be transport-independent and versioned separately from BLE, Wi-Fi and USB bindings.
+
+Display manager, renderer, controller drivers and layouts remain separate, and operation must be headless-capable. Shift-light works independently of RaceChrono/display. Alarm rules, alarm state and presentation are separate. Logger failure must not block acquisition. Lap processing is optional.
+
+Use bounded queues and explicit backpressure/drop policies between runtime responsibilities. Define timeouts, health state, watchdog ownership and isolated restart/escalation so a failed display, storage device, network client or output cannot starve CAN/GNSS acquisition or cause uncontrolled transmission.
+
+Product configuration must be centralized, schema-versioned, validated, atomically persisted, migratable and recoverable to safe defaults. Avoid incompatible per-module persistence formats.
+
+## Repository ownership and dependency policy
+
+Use these ownership boundaries unless an approved architecture change documents a better one:
+
+* `hardware/telemetry-v1/`: derivative ECAD, BOM evidence and approved manufacturing releases
+* `firmware/`: embedded composition and independently testable modules
+* `profiles/`: canonical authored vehicle profiles and provenance
+* `protocol/`: versioned first-party protocol specifications and compatibility fixtures
+* `apps/`: first-party client applications
+* `tools/`: host-side DBC, CAN, profile and log engineering tools
+* `enclosure/`: independent core-device, display and vehicle-mount mechanical artifacts
+* `tests/`: deterministic fixtures, replay, integration and hardware-in-loop assets
+
+Before adding or copying a dependency, example, DBC, CAN capture or CAD asset, record its exact upstream, version/commit, license, notices, intended use and redistribution constraints. Absence of a license is not permission to copy or create a derivative. Prefer wrappers/adapters and pinned upstream dependencies over vendored source. Separate tooling-only dependencies from target firmware. Protect customer vehicle captures and location data; commit only synthetic or redistributable, redacted fixtures with provenance.
+
+Mechanical work has three separately versioned layers: core-device enclosure, display enclosure and vehicle-specific mount. Native parametric CAD is source; meshes are derived. Electrical documents control connector, power, cable and RF limits. Do not infer production dimensions from photos or controller names, and do not make fit/safety claims without documented measurements and validation.
+
 ## Source discipline
 
 For engineering conclusions, prefer authoritative sources in this order:

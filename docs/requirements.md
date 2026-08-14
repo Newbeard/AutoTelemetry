@@ -34,6 +34,27 @@ Status: pre-schematic requirements baseline, audited 2026-08-14. Items marked **
 | PWR-04 | USB source isolation | Support vehicle-only, USB-only, simultaneous and unpowered cases with no back-feed to OBD pin 16 or USB VBUS (`DESIGN_REQUIREMENT`) |
 | FW-01 | Modular firmware | Independent CAN, OBD-II, ISO-TP, UDS, vehicle profile, GNSS, normalized data core, BLE, display, shift-light, alarms, logger, and power modules |
 
+## Product and data architecture requirements
+
+| ID | Requirement | Initial acceptance criterion |
+|---|---|---|
+| ARC-01 | Product monorepo | Hardware, firmware, vehicle profiles, protocols, clients, tools, enclosures, tests, and release evidence have explicit owners and versioned interfaces |
+| DAT-01 | Normalized telemetry core | Every consumer uses canonical channel IDs, units, timestamps, source, validity, age, quality, and arbitration; consumers do not decode vehicle frames |
+| DAT-02 | Source arbitration | Overlapping sources use deterministic eligibility, priority, quality, freshness, hysteresis, and fallback rules defined in `telemetry-data-model.md` |
+| VEH-01 | Level 1 vehicle support | Generic OBD-II operation is available without a manufacturer profile, subject to confirmed vehicle/protocol support |
+| VEH-02 | Level 2 vehicle support | Known profiles declaratively decode passive 11/29-bit Classical CAN frames and default to LISTEN_ONLY |
+| VEH-03 | Level 3 vehicle support | Extended manufacturer telemetry uses explicitly enabled ISO-TP/UDS definitions and the bounded diagnostic scheduler |
+| VEH-04 | Declarative profiles | Profiles express matching, bit rate, frame/decode fields, validity, diagnostic addressing/request/response, source priority, metadata, and support level without output-specific logic |
+| CAN-04 | Explicit bus modes | LISTEN_ONLY cannot transmit; DIAGNOSTIC_POLLING is a deliberate state with configured rate/bus budgets, timeouts, backoff, and health reporting |
+| CAN-05 | Tester coexistence | Diagnostic polling backs off or disables on congestion, arbitration loss/error escalation, or evidence of another diagnostic tester; user override remains available |
+| OUT-01 | Replaceable consumers | RaceChrono, first-party protocol, display, shift-light, alarms, logger, and optional lap engine consume normalized data independently |
+| OUT-02 | Headless operation | CAN/GNSS acquisition, logging, protocol, shift-light, and alarms can operate with no display installed or initialized |
+| PRT-01 | Transport-independent API | First-party services and schemas are versioned independently from BLE, Wi-Fi, and USB bindings and support capability discovery |
+| CFG-01 | Central configuration | Product configuration is schema-versioned, validated, atomically persisted, migratable, exportable, and recoverable to a safe default |
+| RES-01 | Fault isolation | Acquisition cannot be blocked by display, storage, network, or client work; queues are bounded and timeouts, health state, restart policy, and watchdog ownership are explicit |
+| TST-01 | Deterministic verification | Core, profiles, scheduling, protocols, outputs, migrations, overload, and fault behavior are testable with deterministic clocks and provenance-controlled fixtures |
+| MEC-01 | Independent mechanical layers | Core enclosure, display enclosure, and vehicle mount are separately versioned and connected through controlled mechanical/electrical contracts |
+
 ## Safety and validation requirements
 
 - Preserve ESP32-S3 GPIO19/GPIO20 for native USB and do not load GPIO0/GPIO3/GPIO45/GPIO46 without a strap analysis.
@@ -51,6 +72,10 @@ Status: pre-schematic requirements baseline, audited 2026-08-14. Items marked **
 - Display supply voltage/current and cable/connector family.
 - Shift-light and buzzer voltage, current, wiring, and fault protection.
 - Whether GNSS backup supply and retained ephemeris are worth their parked-current cost.
+- Firmware platform/dependency versions, profile/config serialization formats, canonical wire encoding, security/authentication model, update mechanism, and runtime resource budgets.
+- Exact profile matching policy, supported diagnostic services per vehicle, and the criteria for detecting/coexisting with another scan tool.
+- First-party app platforms and BLE/Wi-Fi/USB transport bindings.
+- Core/display mount interface, enclosure material/process, environmental limits, and mount load cases.
 
 ## Audit disposition
 

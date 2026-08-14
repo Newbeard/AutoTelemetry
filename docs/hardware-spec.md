@@ -48,3 +48,11 @@ This is a classified design target, not an approved schematic or an automotive-s
 - RejsaCAN v3.4 reference outline is approximately 31.50 mm × 49.53 mm (`CALCULATED` from repository PCB edge coordinates) with an antenna-end notch; Telemetry v1 dimensions remain `TBD` and will grow for GNSS/RF and connectors.
 - RF connector/antenna cable, OBD strain relief, display cable, enclosure, ventilation, ingress, vibration, and service access are TBD.
 - Temperature, transient, ESD, EMC, and qualification targets must be set before part selection is frozen.
+
+## Product-interface implications
+
+- Hardware exposes capabilities; it does not encode a vehicle, RaceChrono, display layout, alarm rule, logger format, or companion-app transport into the electrical design.
+- CAN mode control must permit a verifiable non-transmitting LISTEN_ONLY state and a supervised DIAGNOSTIC_POLLING state. Exact TCAN3404-Q1/TWAI reset, standby, and failure behavior remains a schematic/firmware verification item.
+- Independent failures of display, shift-light, buzzer, SD, GNSS, USB/client connectivity, or switched peripheral rails must not cause uncontrolled CAN transmission.
+- External interfaces must support the bounded-queue, timeout, health, and isolated-restart architecture in [`architecture.md`](architecture.md); hardware watchdog/reset-domain implications remain unresolved.
+- Enclosure, display, and vehicle-mount CAD must consume controlled PCB/connector/keep-out drawings and the limits in [`enclosure-architecture.md`](enclosure-architecture.md), not create new electrical requirements implicitly.

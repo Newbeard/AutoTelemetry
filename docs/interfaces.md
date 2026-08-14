@@ -100,3 +100,22 @@ The schematic symbol establishes connectivity, but physical header pin-one orien
 - MODE must not use the existing PROG/GPIO0 button because a held button changes boot behavior.
 - CAN-H/L test points must be compact and not create long stubs.
 - UART naming on connectors should include endpoint perspective (`ESP_RX/M9N_TX`, `ESP_TX/M9N_RX`).
+
+## Internal product contracts
+
+| Producer | Contract | Consumers |
+|---|---|---|
+| CAN/TWAI | Timestamped raw frames plus bus/mode health; transmission only through diagnostic policy | profile decoder, OBD/ISO-TP scheduler, optional raw logger |
+| Vehicle decoders and GNSS | Canonical samples with source, time, validity, quality, and profile metadata | normalized telemetry core |
+| Normalized telemetry core | Latest-value lookup and bounded event subscriptions with deterministic arbitration | RaceChrono, device protocol, display, shift-light, alarms, logger, optional lap engine |
+| Configuration service | Validated versioned snapshots and migrations | all configurable modules |
+| Health supervision | Module state, counters, timeouts, queue pressure, and restart/escalation events | device status, logger, first-party protocol |
+
+RaceChrono and display adapters are never internal data buses. Consumers may subscribe at different rates, but a slow consumer cannot block acquisition or alter canonical values.
+
+## Protocol and mechanical boundaries
+
+- The first-party API has transport-independent service/schema versions with BLE, Wi-Fi, and USB bindings; see [`device-protocol-architecture.md`](device-protocol-architecture.md).
+- Vehicle profiles are canonical repository data under `profiles/`; firmware deployment artifacts remain derived and version-linked.
+- The core enclosure, display enclosure, and vehicle mount are separate interfaces. PCB geometry and electrical cable limits remain authoritative inputs to CAD; see [`enclosure-architecture.md`](enclosure-architecture.md).
+- No GPIO or peripheral allocation is changed by these software/mechanical contracts.

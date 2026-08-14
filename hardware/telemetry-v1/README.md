@@ -12,17 +12,16 @@ This directory is reserved for the derivative universal OBD-II telemetry hardwar
 - Obtain the authoritative documents listed in the analysis.
 - Define power/current, transient/EMC/environmental, antenna, display, shift-light, buzzer, connector, and enclosure requirements.
 
-## Intended future structure
+## Controlled placeholder structure
 
-Create subdirectories only when the corresponding work is approved, for example:
+Architecture-only placeholder directories now reserve ownership without authorizing implementation:
 
 ```text
 hardware/telemetry-v1/
   README.md
-  schematic/       # future editable derivative source
-  pcb/             # future layout source
-  libraries/       # project-local reviewed symbols/footprints
+  kicad/            # future editable derivative schematic/PCB source
+  bom/              # future reviewed source BOM and evidence
+  manufacturing/    # future explicitly approved release outputs
 ```
 
-Do not place generated Gerbers, pick-and-place, manufacturing BOMs, or order artifacts here until schematic and PCB reviews are complete.
-
+Each contains only a scope README. Do not place generated Gerbers, pick-and-place, manufacturing BOMs, or order artifacts here until schematic and PCB reviews are complete and explicit approval is given.
