@@ -697,3 +697,115 @@ Document:
 * how it can be verified.
 
 A clearly documented unresolved item is preferable to an unsupported engineering decision.
+
+## Toolchain version discipline
+
+Telemetry v1 uses KiCad major version 10 as the authoritative EDA format. The verified baseline is KiCad 10.0.5. Do not silently migrate project files to another KiCad major version; any migration must be explicit and reviewed.
+
+Telemetry v1 uses stable ESP-IDF v6.0.2 as the firmware major/minor baseline. Do not silently change that baseline; review and document any migration.
+
+## KiCad source of truth
+
+Native KiCad project files are the authoritative source for schematic and PCB design. Do not introduce another schematic-generation framework without explicit approval.
+
+## Schematic validation
+
+After meaningful schematic changes:
+
+1. validate project parsing;
+2. run ERC using the locally verified KiCad CLI;
+3. investigate every ERC error;
+4. document justified exclusions;
+5. export a human-readable schematic PDF;
+6. update the engineering review packet.
+
+A schematic is not review-ready merely because its file parses.
+
+## PCB validation
+
+After meaningful PCB changes:
+
+1. run DRC;
+2. investigate every DRC error;
+3. document justified exclusions;
+4. perform visual/layout review;
+5. update the engineering review packet.
+
+## Datasheet-to-symbol verification
+
+For every custom or critical symbol and footprint, verify against manufacturer documentation:
+
+* exact part number;
+* pin number;
+* pin function;
+* package;
+* orientation;
+* exposed pad;
+* thermal-pad requirements;
+* NC and reserved pins where relevant.
+
+Do not trust a library item solely because its name resembles the component.
+
+## Mechanical source of truth
+
+Parametric editable CAD is the source of truth for mechanical design. CadQuery and FreeCAD are the preferred tools. STEP is the preferred interchange format between PCB and mechanical CAD. STL and 3MF are derived prototyping/manufacturing outputs and must not be treated as the only editable source. Preserve editable CAD sources and parameters.
+
+Preserve the distinction between the universal core-device enclosure, the display-specific enclosure, and the vehicle-specific mount. BMW E81 is only the first development vehicle; do not merge its mounting geometry into the universal product enclosure source.
+
+## Mechanical design validation gate
+
+Final PCB manufacturing release MUST NOT occur before mechanical review. The required workflow is:
+
+PCB placement
+→ KiCad STEP export
+→ parametric enclosure model
+→ PCB/enclosure interference check
+→ connector clearance review
+→ cable routing review
+→ MODE button access review
+→ status LED visibility/light-pipe review
+→ GNSS antenna connector/cable review
+→ USB-C access review
+→ buzzer acoustic opening review if applicable
+→ mounting/fastener review
+→ mechanical review approval
+→ final PCB manufacturing release.
+
+Do not generate final manufacturing-release Gerbers before this gate passes.
+
+## Test-development principles
+
+* New functional firmware behavior should have corresponding automated tests where practical.
+* New vehicle profiles should have reproducible fixtures where legally and practically possible.
+* Vehicle-profile decoding should be testable from recorded CAN or diagnostic data.
+* Fixing one vehicle must not silently break another vehicle profile.
+* Protocol behavior and fault handling require regression tests.
+* Hardware-dependent tests must be separated from deterministic host-side tests.
+* Do not require meaningless tests merely to increase test count.
+
+The vehicle-profile fixture flow is:
+
+Recorded CAN / diagnostic fixture
+→ Vehicle Profile Decoder
+→ Normalized Telemetry
+→ Expected Result.
+
+## Manufacturing validation
+
+Before manufacturing release:
+
+* regenerate Gerbers from the committed authoritative PCB;
+* regenerate drill files;
+* regenerate the BOM;
+* regenerate position/Pick-and-Place data;
+* verify the board revision;
+* verify fabrication notes;
+* verify component orientation;
+* verify connector orientation;
+* verify pin 1;
+* verify unpopulated and DNP components;
+* verify RF components;
+* verify the CAN termination population state;
+* verify that mechanical review passed.
+
+Generated manufacturing outputs must correspond to the committed PCB revision. Do not treat old generated files as authoritative.
