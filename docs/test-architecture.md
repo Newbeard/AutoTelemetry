@@ -1,6 +1,6 @@
 # Product test architecture
 
-Status: verification architecture. It defines evidence and fixture boundaries, not implemented tests or released pass limits.
+Status: Task 4.6 verification architecture. It defines evidence and fixture boundaries, not implemented tests or released pass limits.
 
 ## Principles
 
@@ -9,6 +9,7 @@ Status: verification architecture. It defines evidence and fixture boundaries, n
 - Keep public/synthetic fixtures separate from restricted vehicle captures; redact identifiers and personal location data.
 - A passing software replay does not establish electrical, RF, EMC, thermal, automotive, or vehicle safety compliance.
 - Every released vehicle profile, protocol revision, configuration migration, enclosure, and hardware revision has traceable compatibility evidence.
+- Use [`test-reference-architecture.md`](test-reference-architecture.md) for the audited emulator/tool matrix, fixture ownership and staged host-to-HIL topology.
 
 ## Test layers
 
@@ -18,14 +19,14 @@ Status: verification architecture. It defines evidence and fixture boundaries, n
 | Normalized core | Timestamp ordering, validity/age, quality flags, source arbitration, priorities, hysteresis, fallback, and subscription behavior. |
 | Vehicle profile | Schema validation, matching safety, declared support level, expected channels, rates, and fixture provenance. |
 | Passive CAN replay | 11/29-bit frame decode at declared bit rate without transmitting; malformed, missing, duplicate, delayed, and bus-load cases. |
-| Generic OBD-II | Request/response parsing, unsupported PIDs, timeouts, negative/malformed responses, rate limiting, and recovery. |
+| Generic OBD-II | Request/response parsing, supported-PID bitmaps, unsupported PIDs, multiple ECUs, timeouts, negative/malformed responses, rate limiting and recovery through deterministic virtual and physical emulators. |
 | ISO-TP/UDS | Segmentation, flow control, addressing, negative responses, pending responses, timeouts, scheduler budgets, and cancellation. |
 | Vehicle coexistence | LISTEN_ONLY remains non-transmitting; DIAGNOSTIC_POLLING respects budgets and backs off when another tester or congestion is detected. |
 | GNSS | Parser and rate fixtures, fix/accuracy transitions, monotonic/GNSS time mapping, stale fixes, reconnect, and privacy handling. |
 | RaceChrono output | Adapter maps only normalized channels; reconnect, subscription/rate control, missing values, and compatibility capture. |
-| First-party protocol | Capability discovery, independent schema/API/transport versions, BLE/Wi-Fi/USB parity, auth boundaries, malformed requests, and backpressure. |
+| First-party protocol | Capability discovery, independent schema/API/transport versions, BLE/Wi-Fi/USB parity, web/config authentication, interrupted atomic writes, OTA/profile rollback, malformed requests and backpressure. |
 | Display | Manager/renderer/driver/layout separation, headless mode, unsupported display, partial updates, rate limiting, and disconnect. |
-| Shift-light and alarms | Independent operation, source loss, rule hysteresis/debounce/latching, presentation failure, reset defaults, and output rate limits. |
+| Shift-light, status and alarms | Ten-pixel mapping/current limits, independent operation, source loss, sound waveform/acoustic acceptance, MODE behavior, rule hysteresis/debounce/latching, presentation failure, reset defaults and output rate limits. |
 | Logger | Bounded buffering, media absence/full/removal, record/version integrity, power loss, and slow storage without starving acquisition. |
 | Log parser/tools | Golden versioned logs, malformed/truncated records, integrity failures, schema migration, unknown channels/fields, and exports independent of firmware structs. |
 | Optional lap engine | Explicit enablement, GNSS-quality gates, deterministic geometry, and no coupling to core acquisition. |
@@ -42,6 +43,7 @@ tests/
   unit/            # future host-side module tests
   integration/     # future cross-module deterministic tests
   replay/          # future CAN/GNSS replay harnesses
+  emulator/        # future project-owned scenarios/adapters
   hil/             # future hardware-in-loop definitions and evidence links
 ```
 
@@ -74,7 +76,7 @@ Tests use an injectable monotonic clock and explicit scheduler seeds. Acceptance
 
 ## Unresolved inputs
 
-- Test framework, simulator, host language, CI platform, coverage policy, and resource budgets.
+- Test framework, project-owned emulator scenario schema, host language, CI platform, coverage policy, and resource budgets.
 - Legal/redistribution status and provenance of future CAN/GNSS fixtures.
 - Bench/HIL equipment and authoritative comparison instruments.
 - Vehicle access, safety procedure, acceptance tolerances, and compliance test plans.

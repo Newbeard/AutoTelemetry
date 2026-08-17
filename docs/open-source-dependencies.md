@@ -34,6 +34,22 @@ If no explicit license is found, treat copying, modification, linking, redistrib
 | u-blox `ubxlib` | [u-blox/ubxlib](https://github.com/u-blox/ubxlib) | Apache-2.0 with listed exceptions/third-party components | License permits use subject to notices, but repository states it was discontinued and archived in 2024 | Preserve Apache/third-party notices; exception audit required | Reference only by default because it is archived; do not choose without maintenance plan |
 | SavvyCAN | [collin80/SavvyCAN](https://github.com/collin80/SavvyCAN) | MIT at reviewed root; bundled third-party attributions also exist | May be used/modified under applicable notices | Preserve MIT and bundled asset/component attributions if redistributed | Development/reference tool only; use for CAN capture, visualization, DBC work and replay conversion, not firmware |
 
+## Task 4.6 reference and test-project audit
+
+| Project | Reviewed status/license | Classification and decision |
+|---|---|---|
+| `MagnusThome/ESP32_OBD2_Emulator` | No license found; very small Arduino dummy-response emulator | `REFERENCE_ONLY`; useful concept for a basic physical OBD smoke fixture. Do not copy. Inadequate for ISO-TP, UDS, malformed traffic or deterministic qualification. |
+| `MagnusThome/esp32_obd2` | MIT; Arduino OBD library with legacy CAN dependency | `REFERENCE_ONLY`; possible future `LIBRARY_DEPENDENCY` only after ESP-IDF/scheduler/resource/test review and notice preservation. |
+| `MagnusThome/ESP32S3RET` | MIT; README describes a quick-hack S3 reverse-engineering tool | `DEVELOPMENT_TOOL` / `REFERENCE_ONLY`; isolate from product firmware and preserve notices if reused. |
+| Local RejsaCAN ESP32-C6 dual-CAN self-test | No separate license found and upstream root license remains unclear | `REFERENCE_ONLY`; proves only the example topology, not permission, product need or S3 equivalence. |
+| `AutosportLabs/ESP32-CAN-X2` | No root license visible in review; S3 native TWAI plus MCP2515 topology | `REFERENCE_ONLY`; no code or CAD reuse pending license clarification. |
+| `lbenthins/ecu-simulator` | MIT; Linux SocketCAN OBD/UDS over ISO-TP | First `DEVELOPMENT_TOOL` candidate to evaluate in isolation; pin commit/dependencies and validate older setup and addressing limits. |
+| `Ircama/ELM327-emulator` | CC BY-NC-SA 4.0 | Evaluation-only `DEVELOPMENT_TOOL`; non-commercial restriction requires legal approval and prevents casual product integration/distribution. |
+| `limiter121/esp32-obd2-emulator` | MPL-2.0; archived | `REFERENCE_ONLY`; file-level obligations and inactivity make it unsuitable as a baseline. |
+| `mdabrowski1990/uds` | MIT | Possible isolated `DEVELOPMENT_TOOL` for host UDS client/server simulation after exact-version review. |
+
+The detailed capability, maintenance and limitation record is in [`test-reference-architecture.md`](test-reference-architecture.md). No third-party code was copied, linked, vendored or executed in Task 4.6. Missing licenses are blockers to reuse, not invitations to infer permission.
+
 ## RaceChrono-specific conclusion
 
 RaceChrono's official tutorial points to the BLE DIY repository and documents GPS, CAN-Bus, and Monitor APIs. The reviewed repository exposes protocol details but no explicit license. Telemetry v1 may implement an independent compatibility adapter from normalized telemetry to the documented API; it must not paste reference example code. RaceChrono names/marks remain third-party identifiers, and compatibility must be validated against current official behavior.

@@ -2,7 +2,7 @@
 
 ## ESP32-S3 allocation
 
-This Task 4 allocation supersedes the preliminary Task 2 table. It is based on the RejsaCAN v3.4 single-sheet schematic, `RejsaCAN v3.4 - Pinout.h`, and the ESP32-S3-WROOM-1 v1.8 pin/strap tables. It defines the future derivative schematic and does not modify the reference files.
+This Task 4.6 allocation supersedes the preliminary Task 2 table. It is based on the RejsaCAN v3.4 single-sheet schematic, `RejsaCAN v3.4 - Pinout.h`, and the ESP32-S3-WROOM-1 v1.8 pin/strap tables. It defines the future derivative schematic and does not modify the reference files.
 
 | Function | ESP32-S3 GPIO | Direction | Reference status / conflict | Status |
 |---|---:|---|---|---|
@@ -32,7 +32,7 @@ This Task 4 allocation supersedes the preliminary Task 2 table. It is based on t
 | Strap/test | 45 | — | SD DAT3 in reference; VDD_SPI strap | `RESERVED`; no removable-card load |
 | Strap pins | 0/3/46 | — | Boot/configuration straps | `RESERVED` except GPIO0 PROG |
 
-TCA6408A-Q1 P0…P7 are frozen as GNSS_EN, SD_EN, DISP3_EN, DISP5_EN, SHIFT5_EN, SD_CD_N, STATUS_LED_N and reserved. External pull-downs keep all rail enables off while the expander powers up as inputs. GPIO39–41 intentionally overlap external JTAG; native USB Serial/JTAG is primary, and GPIO42 remains a test pad.
+TCA6408A-Q1 P0…P7 are GNSS_EN, SD_EN, DISP3_EN, DISP5_EN, SHIFT5_EN, SD_CD_N, proposed STATUS_DRV_EN and reserved. External pull-downs keep all rail enables off while the expander powers up as inputs. GPIO39–41 intentionally overlap external JTAG; native USB Serial/JTAG is primary, and GPIO42 remains a test pad.
 
 ## Proposed external connectors
 
@@ -67,9 +67,13 @@ Do not assume different marketplace GC9A01/ST7789/AMOLED modules share voltage l
 
 ### SHIFT_LIGHT
 
+Three conductors: `SHIFT5`, `SHIFT_DATA_5V`, and `GND`. The qualified load is exactly ten WS2812-compatible pixels at ≤0.50 A on a cable ≤0.5 m; the protected branch retains a 1 A fault envelope and connector rating ≥1.5 A. Use at least 26 AWG for power/ground (24 AWG preferred) and 28 AWG or larger for data, with ground adjacent to or twisted with data.
+
 Expose GND, switched/current-limited 5 V up to 1 A, and buffered 5 V logic data (`DESIGN_REQUIREMENT`). Connector rating is ≥1.5 A (`DESIGN_REQUIREMENT`). Default state is off/low during reset and sleep. Require an intelligent/differential module for cables longer than 0.5 m until EMC testing supports another limit.
 
-### BUZZER (if external)
+### Sounder
+
+No external sounder connector is frozen. The proposed onboard TPA2005D1-Q1 drives a differential 8 Ω speaker; neither speaker terminal is ground. GPIO17 remains the sound waveform/control source through the required input conditioning. Exact speaker and acoustic geometry remain provisional.
 
 Expose GND and driven output, plus a defined supply if required. Connector must not invite connection of an inductive load without the required clamp.
 
@@ -116,6 +120,7 @@ RaceChrono and display adapters are never internal data buses. Consumers may sub
 ## Protocol and mechanical boundaries
 
 - The first-party API has transport-independent service/schema versions with BLE, Wi-Fi, and USB bindings; see [`device-protocol-architecture.md`](device-protocol-architecture.md).
+- MODE, status, shift-light, sound, web configuration and recovery semantics are defined in [`user-io-configuration.md`](user-io-configuration.md).
 - Vehicle profiles are canonical repository data under `profiles/`; firmware deployment artifacts remain derived and version-linked.
 - The core enclosure, display enclosure, and vehicle mount are separate interfaces. PCB geometry and electrical cable limits remain authoritative inputs to CAD; see [`enclosure-architecture.md`](enclosure-architecture.md).
 - No GPIO or peripheral allocation is changed by these software/mechanical contracts.

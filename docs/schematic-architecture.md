@@ -1,6 +1,6 @@
 # Telemetry v1 schematic architecture
 
-Status: complete pre-schematic block definition, 2026-08-14. This is the controlled input to a future derivative schematic. It is not a schematic, PCB placement, layout, manufacturing package or compliance claim.
+Status: Task 4.6 complete pre-schematic block definition, 2026-08-17. This is the controlled input to a future derivative schematic. It is not a schematic, PCB placement, layout, manufacturing package or compliance claim.
 
 ## Sheet hierarchy and controlled net names
 
@@ -17,7 +17,7 @@ Status: complete pre-schematic block definition, 2026-08-14. This is the control
 | 9 | USB-C and USB source | `USB_VBUS_RAW`, `USB5_PROTECTED`, `USB_D_N/P`, `USB_PRESENT` |
 | 10 | Display interface | `DISPLAY_3V3`, `DISPLAY_5V`, shared SPI and display controls |
 | 11 | Shift-light output | `SHIFT5`, `SHIFT_DATA_5V`, fault/status |
-| 12 | Buzzer, MODE and status | `BUZZER_PWM`, `MODE_N`, `STATUS_LED_N` |
+| 12 | Sounder, MODE and status | `SOUND_PWM`, `MODE_N`, `STATUS_DRV_EN` |
 | 13 | Debug and test points | UART0, power, CAN logic/bus and GNSS digital test points |
 
 No Telemetry v1 sheet adds TPMS, tire temperature, IMU, analog sensor hubs, an external sensor bus or a second CAN channel.
@@ -57,10 +57,10 @@ The two source paths are diode-ORed functionally. The vehicle path is normally a
 | `GNSS_3V3` | 3.3 V | 70 mA design continuous | 200 mA branch requirement | TPS22919, `EXP_P0/GNSS_EN`; off parked | 100 nF at every module VCC pin group plus local bulk per u-blox reference; measurement link |
 | `SD_3V3` | 3.3 V | card-dependent | 250 mA requirement | TPS22919, `EXP_P1/SD_EN`; off parked | local 100 nF plus ≥10 µF starting bulk; final value from card inrush measurement |
 | `DISPLAY_3V3` | 3.3 V | 300 mA initial module contract | 400 mA maximum | TPS22919, `EXP_P2/DISP3_EN`; off parked | connector-side 100 nF + ≥22 µF starting bulk; display requires local decoupling |
-| `AUX5` | 5.0 V | application-managed | 1.955 A combined peak with margin | LMQ EN from GPIO21; off parked/USB-only | same TI 2.2 MHz starting network; recalculate thermal/inrush |
+| `AUX5` | 5.0 V | application-managed | 1.625 A combined peak with margin | LMQ EN from GPIO21; off parked/USB-only | same TI 2.2 MHz starting network; recalculate thermal/inrush |
 | `DISPLAY_5V` | 5.0 V | 500 mA | 600 mA maximum | TPS22919, `EXP_P3/DISP5_EN`; only after AUX5 PGOOD | connector-side bulk; never enable with DISPLAY_3V3 for an incompatible module |
-| `SHIFT5` | 5.0 V | load-defined ≤1 A | 1 A supported | TPS1H100-Q1, `EXP_P4/SHIFT5_EN`; only after AUX5 PGOOD | current-limit resistor calculation, fault sense, connector ESD and bulk |
-| `BUZZER5` | 5.0 V | ≤200 mA envelope | transducer TBD | AUX5 plus GPIO17 low-side PWM; off parked | flyback/clamp footprint and local decoupling |
+| `SHIFT5` | 5.0 V | ≤500 mA qualified | 1 A protected fault envelope | TPS1H100-Q1, `EXP_P4/SHIFT5_EN`; only after AUX5 PGOOD | current-limit resistor calculation, fault sense, connector ESD and bulk |
+| `SOUNDER5` | 5.0 V | ≤300 mA envelope | 8 Ω, ≥1 W speaker provisional | AUX5 plus proposed TPA2005D1-Q1, GPIO17 waveform/control; off parked | BTL output; input reconstruction/coupling, PowerPAD copper and local decoupling |
 
 Loads shall not rely on an ESP32 GPIO for power. All switch-enable nets have hardware pull-downs so reset, an unconfigured TCA6408A or a broken I²C bus leaves external rails off.
 
@@ -172,15 +172,15 @@ Maximum recommended cable length is 200 mm (`DESIGN_REQUIREMENT`) pending signal
 
 The external contract is `SHIFT5`, `GND`, and `SHIFT_DATA_5V`, with connector current rating ≥1.5 A. TPS1H100-Q1 supplies a protected/current-limited 5 V branch up to 1 A; it is off in PARKED, reset and USB-only. The current-limit resistor and thermal SOA are calculated in the derivative schematic. CAHCT1G126-Q1 translates GPIO6 to 5 V and its active-high OE is the same safe enable policy as SHIFT5. Add a 33 Ω starting series-damping footprint at the buffer and connector-side 5 V ESD.
 
-An 8–10 pixel addressable module is the initial load. `CALCULATED` worst-case support is `5 V × 1 A = 5 W`. The interface does not promise direct GPIO power. Cable length is ≤0.5 m for single-ended addressable data; longer installations require an intelligent/differential external module and a new interface review.
+Exactly ten V6-class WS2812-compatible pixels are the frozen functional load. `CALCULATED` all-white load is 360.010 mA; with 25% margin it is 450 mA, rounded to a 500 mA qualified load. The separate TPS1H100-Q1 fault/protection envelope remains 1 A. Start with 33 Ω data damping (22–47 Ω measurement range), local 100 nF per pixel, ≥26 AWG power/ground (24 AWG preferred), ≥28 AWG data, and ≤0.5 m cable with ground adjacent/twisted to data. Exact pixel, ESD array and connector remain provisional.
 
-## Buzzer, MODE and indicators
+## Sounder, MODE and indicators
 
-Telemetry v1 uses one **onboard** buzzer only. GPIO17 drives an AEC-Q101 low-side MOSFET; a flyback diode footprint is populated for magnetic transducers. The transducer stays provisional until enclosure acoustic testing freezes rated voltage, current, frequency, sound pressure and package. The branch envelope is ≤200 mA and requires AUX5; no ESP32 pin sources buzzer current.
+`PROPOSED CHANGE`: replace the low-side buzzer MOSFET/clamp with TPA2005D1-Q1 on `SOUNDER5`, driving one onboard differential 8 Ω, ≥1 W speaker. GPIO17 remains the waveform source through an input reconstruction/coupling network. Neither BTL speaker terminal is ground. The 300 mA branch derives from 1 W/(5 V×0.75 assumed efficiency)+2.8 mA = 269.5 mA rounded up. Exact speaker, acoustic port/back volume and in-cabin acceptance require measurement; no maximum-SPL claim is frozen.
 
 MODE is a normally-open switch from GPIO10 to ground with a 47 kΩ starting pull-up to MAIN_3V3 and 1 nF DNP debounce capacitor. `CALCULATED` pressed current is `3.3 V / 47 kΩ = 70.2 µA`; this is momentary and not parked average. Debounce is primarily firmware; capacitor population must not violate wake timing. GPIO10 is not a strap pin.
 
-One service/status LED is allowed on `EXP_P6/STATUS_LED_N`, default off and never required in PARKED. No always-on power LED is permitted. PROG/GPIO0 and RESET/EN buttons remain available for recovery and are distinct from MODE.
+`PROPOSED CHANGE`: LP5814DRLR on MAIN_3V3 drives one common-anode RGB status LED over shared I²C, with `EXP_P6/STATUS_DRV_EN` keeping it off by default and in PARKED. Exact LED/resistors/optics remain provisional. No always-on power LED is permitted. PROG/GPIO0 and RESET/EN buttons remain available for recovery and are distinct from MODE.
 
 ## USB-C sheet
 
@@ -215,7 +215,7 @@ GPIO4 senses `USB_PRESENT` through a high-value divider/clamp that meets USB VBU
 | 12 | DISP_RST_N | `FROZEN` | display off/reset parked |
 | 13 / 14 | CAN_RX/WUP / CAN_TX | `FROZEN` | RX RTC-wake capable; TX safe/recessive policy |
 | 15 / 16 | GNSS_RX / GNSS_TX | `FROZEN` | endpoint naming: ESP RX/M9N TX and reverse |
-| 17 | BUZZER_PWM | `FROZEN` | MOSFET gate pull-down |
+| 17 | SOUND_PWM | `FROZEN GPIO`, proposed amplifier function | safe low/default; waveform into amplifier input network |
 | 18 | EXP_INT_N | `FROZEN` | TCA6408A interrupt/wake/status input |
 | 19 / 20 | USB D− / D+ | `FROZEN` | native USB only |
 | 21 | AUX5_EN | `FROZEN` | direct safety-critical domain enable, pull-down |
@@ -227,7 +227,7 @@ GPIO4 senses `USB_PRESENT` through a high-value divider/clamp that meets USB VBU
 | 46 | reserved strap | `RESERVED` | input-only/boot strap; no external load |
 | 47 / 48 | DISP_CS / DISP_DC | `FROZEN` | 3.3 V on N16R8; inactive/default states defined |
 
-TCA6408A allocation: P0 GNSS_EN, P1 SD_EN, P2 DISP3_EN, P3 DISP5_EN, P4 SHIFT5_EN, P5 SD_CD_N, P6 STATUS_LED_N, P7 reserved. Every output-enable target has an independent pull-down; because the expander powers up with ports as inputs, rails remain disabled until software deliberately configures them.
+TCA6408A allocation: P0 GNSS_EN, P1 SD_EN, P2 DISP3_EN, P3 DISP5_EN, P4 SHIFT5_EN, P5 SD_CD_N, P6 proposed STATUS_DRV_EN, P7 reserved. Every output-enable target has an independent pull-down; because the expander powers up with ports as inputs, rails remain disabled until software deliberately configures them.
 
 GPIO39–42 external JTAG conflicts are explicit: shared SPI consumes 39–41 during normal operation, while GPIO42 is preserved as a test pad. Native USB Serial/JTAG is primary debug. This is an accepted multiplexing limitation, not an unresolved collision.
 
@@ -237,14 +237,14 @@ Provide labelled, compact test points for `POWER_GND`, `OBD_VBAT` after fuse, `V
 
 ## Firmware-architecture compatibility check
 
-The one high-impedance Classical-CAN PHY supports raw CAN, Generic OBD-II, future ISO-TP/UDS, LISTEN_ONLY and bounded DIAGNOSTIC_POLLING. Independent GNSS UART/power supports streaming. ESP32 BLE supports RaceChrono and a future first-party protocol without changing the internal data model. Shared SPI with independent selection/power supports interchangeable displays and logging; display, SD and GNSS faults can be power-isolated. Direct shift-light and buzzer controls support autonomous operation. Native USB and UART0 preserve update/debug. No external display is required for headless operation.
+The one high-impedance Classical-CAN PHY supports raw CAN, Generic OBD-II, future ISO-TP/UDS, LISTEN_ONLY and bounded DIAGNOSTIC_POLLING. Independent GNSS UART/power supports streaming. ESP32 BLE supports RaceChrono and a future first-party protocol without changing the internal data model. Shared SPI with independent selection/power supports interchangeable displays and logging; display, SD and GNSS faults can be power-isolated. Direct shift-light data and proposed autonomous sound/status drivers support headless operation. Native USB and UART0 preserve update/debug. No external display is required for headless operation.
 
 ## Schematic-entry blockers
 
 - Approved vehicle transient/crank/jump-start/temperature test profile and input TVS/filter validation.
 - LMQ66420 inductor/capacitor/loss/thermal calculations with enclosure ambient and actual copper assumptions.
 - Final OBD, display and shift-light connector mechanical/current/environment selection.
-- Final microSD socket temperature/access choice and buzzer acoustic/mechanical choice.
+- Final microSD socket temperature/access choice; approval of proposed sound/status drivers; exact speaker, RGB LED and acoustic/optical geometry.
 - Exact vehicle-activity detector, protected ADC divider and PWR_FAULT_N circuit.
 - ESD arrays for display/shift connector selected after connector pinout and return geometry.
 

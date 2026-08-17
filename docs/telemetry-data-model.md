@@ -1,6 +1,6 @@
 # Normalized Telemetry Data Core
 
-Status: conceptual architecture contract. No parser, registry, scheduler, serialization, or firmware implementation is defined here.
+Status: Task 4.6 conceptual architecture contract. No parser, registry, scheduler, serialization, or firmware implementation is defined here.
 
 ## Purpose and boundary
 
@@ -50,6 +50,19 @@ The initial registry is deliberately small:
 | `ACCELERATION_X/Y/Z` | numeric | m/s² | Reserved for future sensor/GNSS/vehicle sources; coordinate frame is mandatory metadata |
 
 The registry must distinguish values that look similar but have different semantics. For example, wheel speed, ECU vehicle speed, and GNSS speed remain separate source channels even when one is selected as `VEHICLE_SPEED`.
+
+### Future tire channels
+
+Tire electronics are outside Telemetry v1, but the core reserves transport-independent concepts for a separate future producer:
+
+| Channel concept | Canonical unit | Shape / rule |
+|---|---|---|
+| `TIRE_PRESSURE_FL/FR/RL/RR` | Pa | One value per wheel; source and validity mandatory |
+| `TIRE_TEMPERATURE_FL/FR/RL/RR` | °C | Overall/center tire temperature distinct from tread points |
+| `TIRE_TREAD_TEMPERATURE_<POSITION>` | °C | Bounded left-to-right array with explicit vehicle-relative orientation |
+| `TIRE_HEALTH_<POSITION>` | structured/enum | Sensor freshness, battery/link quality and explicit unavailable state |
+
+These symbolic IDs are preliminary until registry governance freezes them. RaceChrono’s documented tread channels use `Tyre temperature <position> 1…8` from left edge to right edge; the adapter owns that naming. A canonical pressure name was not found in the reviewed public RaceChrono material, so compatibility must be captured against the target app release. No consumer may infer tire data from a direct sensor transport.
 
 ## Sample contract
 
@@ -227,7 +240,7 @@ Subscriptions declare channel set, maximum rate, maximum age, and delivery polic
 ## Open questions
 
 - Exact in-memory numeric representation and memory budget on ESP32-S3.
-- Registry governance, numeric wire IDs, extension namespace allocation, and localization of names/units.
+- Registry governance, numeric wire IDs, extension namespace allocation, tire-array representation, vehicle-relative tread orientation, and localization of names/units.
 - Exact quality scale and whether covariance/accuracy needs structured types.
 - Canonical profile serialization and signing/update trust model.
 - Required profile matching confidence before enabling diagnostic transmission.

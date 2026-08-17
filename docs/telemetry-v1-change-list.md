@@ -37,8 +37,9 @@ This is a review list, not authorization to edit the v3.4 design. “KEEP” mea
 - Hirose U.FL-R-SMT-1(10), ESDAXLC6-1BT2Y, and 50 Ω RF section with the u-blox 100 nF/27 nH bias-T starting topology and 22 Ω ≥0.5 W passive short-current limiter. Exact antenna remains a blocker.
 - RF keep-out/placement rules separating GNSS from ESP32 antenna, buck switch node, CAN edges, SD/display clocks, and cables.
 - Universal display connector: dual GND, switched 3.3 V/optional 5 V, SPI, CS, DC, reset, driven PWM/enable, optional I2C and INT/TE; initial ≤200 mm/20 MHz cable contract.
-- TPS1H100BQPWPRQ1 protected 5 V/1 A shift-light branch and CAHCT1G126QDCKRQ1 buffered data on GPIO6, with cable ≤0.5 m.
-- Onboard ≤200 mA 2N7002KQ buzzer driver on GPIO17; BAS21W clamp is provisional and depends on the selected transducer.
+- TPS1H100BQPWPRQ1 protected 5 V/1 A fault envelope and CAHCT1G126QDCKRQ1 buffered data on GPIO6 for exactly ten shift pixels, a 0.50 A qualified load and cable ≤0.5 m.
+- `PROPOSED CHANGE`: TPA2005D1-Q1 on GPIO17 with a 300 mA AUX5 envelope and provisional onboard 8 Ω, ≥1 W speaker.
+- `PROPOSED CHANGE`: LP5814DRLR on I2C with P6 `STATUS_DRV_EN` and a provisional common-anode RGB status LED.
 - Vehicle input using 0437002A WRA, LM74502HQDDFRQ1, and two DMT6007LFGQ-7 MOSFETs. LDP01-28AY and the input filter remain provisional until the pulse profile is fixed.
 - USB input using USBLC6-2SC6Y, TPS2553QDBVRQ1 with 43.2 kΩ ILIM, and PMEG6030EP-Q reverse isolation; USB-only load ≤500 mA.
 - MODE button on non-strap GPIO10.

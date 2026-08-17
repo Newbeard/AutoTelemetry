@@ -1,6 +1,6 @@
 # Telemetry v1 frozen hardware specification
 
-This is the Task 4 component and interface freeze, not an approved schematic, PCB release, or automotive-safety claim. Exact ordering codes, qualification, exceptions, and source evidence are in [`component-freeze.md`](component-freeze.md); circuit boundaries are in [`schematic-architecture.md`](schematic-architecture.md).
+This is the Task 4.6 component and interface research freeze, not an approved schematic, PCB release, or automotive-safety claim. Exact ordering codes, qualification, exceptions, and source evidence are in [`component-freeze.md`](component-freeze.md); circuit boundaries are in [`schematic-architecture.md`](schematic-architecture.md).
 
 Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CAN channel, protected power and parked wake/sleep, ESP32-S3, onboard GNSS, microSD, USB-C, BLE, an interchangeable external display, a short-cable shift light, onboard audible alarm, MODE input, status indication, and debug. TPMS, tire-temperature sensing, IMUs, analog sensor hubs, external sensor networks, and a second CAN channel are explicitly outside this revision.
 
@@ -33,9 +33,12 @@ Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CA
 
 ## Outputs
 
-- Shift-light: freeze TPS1H100BQPWPRQ1 protected 5 V/1 A output and CAHCT1G126QDCKRQ1 data buffer for a cable ≤0.5 m. A longer/noisier installation requires a different, intelligent or differential module and is outside v1.
-- Buzzer: onboard only, PWM-capable low-side drive using 2N7002KQ, ≤200 mA. BAS21W is the provisional inductive clamp; exact transducer and clamp population remain blockers.
-- Neither external load is driven directly by an ESP32 GPIO.
+- Freeze a ten-pixel, ≤0.5 m removable shift-light contract. Qualify the WS2812-compatible load to 0.50 A while retaining the existing 1 A TPS1H100-Q1 protected fault envelope, CAHCT1G126-Q1 5 V data buffer, connector-side ESD and ≥1.5 A connector rating.
+- Propose replacing the low-side buzzer MOSFET with TPA2005D1-Q1 driving one onboard 8 Ω, ≥1 W speaker from a 300 mA AUX5 branch. Exact speaker, acoustic port and enclosure volume remain provisional.
+- Propose LP5814DRLR on MAIN_3V3 for one common-anode RGB status LED. It shares I2C; expander P6 becomes `STATUS_DRV_EN`. Exact LED and optical implementation remain provisional.
+- MODE remains GPIO10, button-to-ground, 47 kΩ starting pull-up, separate from RESET and BOOT. User-visible behavior and safe configuration entry are controlled by [`user-io-configuration.md`](user-io-configuration.md).
+
+- Neither the external shift load nor the onboard sounder is powered directly by an ESP32 GPIO. Longer/noisier shift installations require a different intelligent or differential module and are outside v1.
 
 ## Expansion and debug
 

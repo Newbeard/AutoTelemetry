@@ -1,6 +1,6 @@
 # First-party device protocol architecture
 
-Status: capability and layering proposal. No wire format, BLE service, Wi-Fi port, USB class, cryptographic suite, or compatibility promise is frozen.
+Status: Task 4.6 capability and layering proposal. No wire format, BLE service, Wi-Fi port, USB class, cryptographic suite, or compatibility promise is frozen.
 
 ## Goals
 
@@ -100,11 +100,19 @@ Suitable for pairing, configuration, moderate-rate telemetry, and status. The bi
 
 ### Wi-Fi
 
-Suitable for high-rate telemetry, logs, profile/firmware transfer, and development. AP/client behavior, discovery, TLS, credentials, local-network trust, and power policy remain unresolved. Wi-Fi absence must not affect acquisition or local outputs.
+Suitable for high-rate telemetry, logs, profile/firmware transfer, and development. Client-mode behavior, full TLS/ownership threat model, credential lifecycle and local-network trust remain unresolved; the local configuration baseline is authenticated, time-limited SoftAP entered by physical action. Wi-Fi absence must not affect acquisition or local outputs.
 
 ### USB
 
 Suitable for deterministic development/service access, logs, configuration, and recovery. The binding must coexist with native ESP32-S3 USB debugging/update needs and the hardware power-isolation policy. USB presence is not automatically administrative authorization.
+
+## Configuration and update ownership
+
+The web UI, future app, USB service tool and automated tests all call the same configuration manager. It supplies immutable validated snapshots and owns schema migration, stage/commit, last-known-good recovery, safe defaults and secret redaction. SoftAP web configuration starts only after a safe physical MODE request, uses per-device/session credentials and application authorization, expires after 10 minutes of inactivity, and turns Wi-Fi off on exit. Captive-portal behavior is not required.
+
+Firmware OTA uses ESP-IDF’s HTTPS OTA path, server-certificate validation, signed image/manifest, hardware/schema compatibility checks and an inactive slot. A pending image must pass bounded self-tests before confirmation or roll back. Anti-rollback eFuses remain deferred until signing, manufacturing and recovery processes are qualified.
+
+Vehicle profiles are declarative and non-executable. Their manifest and content are authenticated, schema/runtime checked, staged, dry-run validated and activated atomically with a last-known-good profile and built-in Generic OBD fallback. Profile and firmware release cadence remain independent.
 
 ## Security and safety boundary
 

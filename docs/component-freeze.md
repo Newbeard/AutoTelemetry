@@ -1,6 +1,6 @@
 # Telemetry v1 component freeze
 
-Status: pre-schematic component gate, 2026-08-14. This document freezes component identity and electrical architecture only. It does not authorize schematic capture, PCB layout, procurement, or an automotive-compliance claim.
+Status: Task 4.6 pre-schematic research gate, 2026-08-17. This document freezes component identity and electrical architecture only. It does not authorize schematic capture, PCB layout, procurement, or an automotive-compliance claim.
 
 ## Status and evidence convention
 
@@ -20,7 +20,7 @@ The freeze is intentionally limited to Telemetry v1: one OBD/Classical-CAN inter
 | CAN-line TVS | `ESDCAN04-2BWY` | STMicroelectronics | AEC-Q101 | SOT323-3L | `FROZEN` | Dual CAN-line protection; 25.5 V stand-off, 27.5 V typical breakdown, 43 V maximum clamp at 3 A, 19 pF maximum line capacitance, 0.05 µA maximum leakage at 25 °C. Compatible with v1 Classical CAN bandwidth. | Lower-capacitance ESDCAN02/03 variants; TI ESD2CAN24-Q1. | High for schematic; validate full interface pulses |
 | Optional CAN CMC | `ACT45B-510-2P-TL003` | TDK | AEC-Q200 | 1812, four pad | `FROZEN footprint`, `DNP` | Production-status 51 µH common-mode choke, 200 mA, 50 V, 1 Ω maximum per winding, −40…+150 °C. Default 0 Ω bypasses avoid adding unmeasured impedance; populate only after EMC/SI testing. | No choke; ACT45B-101. | High |
 | MAIN_3V3 buck | `LMQ66420MC3RXBRQ1` | Texas Instruments | AEC-Q100 | 14-pin 2.6 mm VQFN wettable flank | `FROZEN silicon` | Fixed 3.3 V option, 2 A, 3–36 V operating/42 V transient, 1.5 µA typical no-load IQ, PGOOD, spread spectrum, 2.2 MHz. Meets 1.313 A calculated peak-with-margin requirement. Magnetics/capacitors remain schematic calculations. | `LM53602-Q1`: 23 µA typical IQ; `LMQ66430MC3`: more current but no budget need. | High part; medium thermal/EMI |
-| AUX5 buck | `LMQ66420MC5RXBRQ1` | Texas Instruments | AEC-Q100 | 14-pin 2.6 mm VQFN wettable flank | `FROZEN silicon` | Same family as MAIN_3V3, fixed 5 V option, 2 A; normally disabled. Meets 1.955 A calculated peak-with-margin envelope, but simultaneous full-load operation is a validation corner. | `LMQ66430MC5`: greater margin at BOM/area cost. | Medium; thermal validation required |
+| AUX5 buck | `LMQ66420MC5RXBRQ1` | Texas Instruments | AEC-Q100 | 14-pin 2.6 mm VQFN wettable flank | `FROZEN silicon` | Same family as MAIN_3V3, fixed 5 V option, 2 A; normally disabled. Meets 1.625 A calculated peak-with-margin envelope, but simultaneous full-load operation is a validation corner. | `LMQ66430MC5`: greater margin at BOM/area cost. | Medium; thermal validation required |
 | 3.3/5 V branch switches | `TPS22919QDCKRQ1` | Texas Instruments | AEC-Q100 | SC70-6 | `FROZEN` | 1.6–5.5 V, 1.5 A, 90 mΩ typical, controlled rise, QOD, short and thermal protection, 2 nA typical off current. Populate four for GNSS_3V3, SD_3V3, DISPLAY_3V3, and DISPLAY_5V. | AP22919QDW-7; discrete MOSFET switches. | High electrically; distributor stock must be rechecked |
 | Low-speed enable expansion | `TCA6408AQPWRQ1` | Texas Instruments | AEC-Q100 | TSSOP-16 | `FROZEN` | Eight I²C GPIO, reset/POR, all ports input/no-glitch after reset. External pull-downs keep every rail off before configuration and preserve GPIO42 for JTAG. | Direct GPIO allocation; TCA9539-Q1. | High |
 | Vehicle-path controller | `LM74502HQDDFRQ1` | Texas Instruments | AEC-Q100 grade 1 | 8-pin thin SOT-23 | `FROZEN` | 3.2–65 V, −65 V reverse withstand, 110 µA maximum operating current, programmable UV/OV and fast 11 mA gate drive for back-to-back N-MOSFETs. It does **not** provide reverse-current blocking while on; USB isolation is separate. | LM74700-Q1 lacks OV disconnect; passive diode wastes voltage/power. | High architecture |
@@ -39,7 +39,8 @@ The freeze is intentionally limited to Telemetry v1: one OBD/Classical-CAN inter
 | Shift-light high-side switch | `TPS1H100BQPWPRQ1` | Texas Instruments | AEC-Q100 | HTSSOP-14 | `FROZEN` | 5–40 V catalog range, 4 A output class, adjustable 0.5–7 A current limit, diagnostics, short/thermal protection; configure nominal limit for the 1 A branch during schematic calculation. | TPS22919 lacks a precise 1 A fault limit; discrete switch/fuse. | High part, medium current-limit thermal design |
 | Shift-light level shifter/buffer | `CAHCT1G126QDCKRQ1` | Texas Instruments | Automotive-rated logic | SC70-5 | `FROZEN` | 3–5.5 V, TTL-compatible input accepts ESP32 3.3 V, active-high OE produces safe high-Z/off until SHIFT5_EN, 8 mA output. Add connector-side series damping and ESD. | SN74AHCT1G125-Q1; discrete transistor. | High |
 | Display power/backlight interface | `TPS22919QDCKRQ1` switches plus `2N7002KQ-7` open-drain BL sink | TI / Diodes | AEC-Q100 / AEC-Q101 | SC70-6 / SOT-23 | `FROZEN electrical contract` | Separately switched 3.3 V and 5 V; open-drain BL control avoids driving backlight current from ESP32. Display module must contain its own backlight current regulator if raw LED drive is required. | Direct GPIO; fixed display-specific driver. | High contract, provisional mechanical connector |
-| Buzzer driver | `2N7002KQ-7` plus `BAS21WQ-7-F` clamp candidate | Diodes Incorporated | AEC-Q101 | SOT-23 / SOD123 | `FROZEN driver`, transducer `PROVISIONAL` | Low-side PWM MOSFET; clamp footprint covers a magnetic load. Onboard-only buzzer avoids an unprotected external inductive-load interface. Acoustic output, frequency and transducer footprint depend on enclosure testing. | Active buzzer; external buzzer. | High driver, low acoustic selection |
+| Sound amplifier | `TPA2005D1-Q1` | Texas Instruments | AEC-Q100 | 8-pin MSOP PowerPAD | `PROPOSED CHANGE`; speaker `PROVISIONAL` | 2.5–5.5 V mono filter-free class-D, differential BTL, 1.4 W into 8 Ω at 5 V/10% THD, shutdown, short-circuit and thermal protection. Replaces the frozen low-side buzzer MOSFET/clamp proposal while retaining GPIO17. Exact 8 Ω, ≥1 W speaker and acoustic geometry require testing. | Active piezo/magnetic buzzer; passive piezo; speaker plus other amplifier. | High amplifier evidence, low acoustic selection |
+| RGB status driver | `LP5814DRLR` | Texas Instruments | Not AEC-qualified | SOT-5X3-8 | `PROPOSED CHANGE`; LED `PROVISIONAL` | Four I²C current-sink channels, 0.1–51 mA/channel, 8-bit current/PWM, 23 kHz PWM, 0.1 µA shutdown typical. Drives one common-anode RGB LED without three MCU GPIOs; P6 becomes `STATUS_DRV_EN`. | Direct GPIO; resistor-coded LED; external smart pixel. | Medium pending qualification/optical review |
 
 ## MCU decision details
 
@@ -65,14 +66,14 @@ Passive/listen-only is enforced both by ESP32 TWAI listen-only mode and a transm
 `CALCULATED` worst named rail power, before efficiency:
 
 ```text
-PLOAD = 3.3 V × 1.313 A + 5.0 V × 1.955 A
-      = 4.333 W + 9.775 W
-      = 14.108 W
+PLOAD = 3.3 V × 1.313 A + 5.0 V × 1.625 A
+      = 4.333 W + 8.125 W
+      = 12.458 W
 
-IIN(12 V, 80% assumed efficiency) = 14.108 W / (12 V × 0.80)
-                                    = 1.470 A
+IIN(12 V, 80% assumed efficiency) = 12.458 W / (12 V × 0.80)
+                                    = 1.298 A
 
-2 A fuse current margin = (2.000 - 1.470) / 1.470 = 36.1%
+2 A fuse current margin = (2.000 - 1.298) / 1.298 = 54.1%
 ```
 
 The 80% simultaneous-envelope efficiency is an `ASSUMPTION`; normal operation will be lower than this constructed simultaneous peak. The fuse’s time-current curve, ambient derating, input capacitor inrush and harness fault clearing still require schematic review. The 2 A result is a design starting point, not proof that the fuse coordinates with a vehicle harness.
@@ -95,7 +96,7 @@ For both 2.2 MHz fixed-output LMQ66420-Q1 devices, TI Table 8-5 gives `2.2 µH`,
 
 - inductor peak/saturation current over approved minimum and maximum VIN;
 - capacitor effective capacitance, ripple current and voltage derating;
-- IC, inductor and capacitor loss at 1.313 A MAIN_3V3 and 1.955 A AUX5 peaks;
+- IC, inductor and capacitor loss at 1.313 A MAIN_3V3 and 1.625 A AUX5 peaks;
 - junction temperature with the actual PCB copper and enclosure ambient;
 - startup/inrush for every load combination; and
 - switching-frequency/EMI interaction with GNSS, CAN, USB, SD and display clocks.
@@ -104,7 +105,7 @@ The silicon is frozen; those passives and thermal conclusions are not.
 
 ## Lifecycle, availability and prototype suitability
 
-Manufacturer status was checked on 2026-08-14. TI marks TCAN3404-Q1, both LMQ66420-Q1 variants, LM74502H-Q1, TPS22919-Q1, TPS2553-Q1, TPS1H100-Q1, TCA6408A-Q1 and the AHCT buffer active. ST marks USBLC6-2SC6Y and LDP01-28AY active; TDK lists ACT45B-510 as production; Nexperia lists PMEG6030EP-Q as production; u-blox presents NEO-M9N-00B as a current variant. Infineon’s rejected TLE9251VLE is specifically “not for new design.”
+Manufacturer status was checked on 2026-08-14 for the Task 4 parts and on 2026-08-17 for TPA2005D1-Q1 and LP5814. TI lists both proposed additions as active. TI marks TCAN3404-Q1, both LMQ66420-Q1 variants, LM74502H-Q1, TPS22919-Q1, TPS2553-Q1, TPS1H100-Q1, TCA6408A-Q1 and the AHCT buffer active. ST marks USBLC6-2SC6Y and LDP01-28AY active; TDK lists ACT45B-510 as production; Nexperia lists PMEG6030EP-Q as production; u-blox presents NEO-M9N-00B as a current variant. Infineon’s rejected TLE9251VLE is specifically “not for new design.”
 
 Prototype assembly is easiest for SOIC/TSSOP/SOT parts. The 2.6 mm LMQ VQFN, PowerDI3333 MOSFET and NEO-M9N LCC require stencil/reflow and inspection but are realistic for professional prototype assembly. The U.FL has only 30 specified mating cycles and is a service/RF connector, not a daily user connector. `TPS22919QDCKRQ1` showed conflicting DigiKey regional snapshots (one out of stock, another large inventory), so stock must be checked immediately before BOM release.
 
@@ -130,8 +131,8 @@ Prices are USD per board, distributor web pricing observed 2026-08-14, excluding
 | USB4105-GF-A-120 ×1 | 0.80 | 0.68 | 0.57 | DigiKey stock about 69,000 |
 | Molex 104031-0811 ×1 | 2.04 | 1.73 | 1.47 | Provisional socket; DigiKey stock >17,000 |
 | Fuse + input TVS | 4.32 | 3.00 | 2.25 | LDP01 direct $3.82/$2.49/$1.85 plus fuse envelope |
-| Shift buffer + buzzer driver/clamp | 1.10 | 0.80 | 0.55 | `ASSUMPTION` envelope pending distributor quote |
-| **Preliminary major-electronics subtotal** | **56.0** | **49.6** | **45.2** | Rounded; uncertainty roughly ±20% before full BOM |
+| Shift buffer + proposed sound/status drivers | 4.50 | 3.50 | 2.50 | `ASSUMPTION` envelope pending exact packages/quotes |
+| **Preliminary major-electronics subtotal** | **59.4** | **52.3** | **47.2** | Rounded; uncertainty roughly ±20% before full BOM |
 
 The cost risk is dominated by GNSS, the two bucks and the ESP32 module. The subtotal includes provisional input/mechanical parts to avoid understating the prototype, but it is not a final BOM cost.
 
@@ -146,11 +147,14 @@ The cost risk is dominated by GNSS, the two bucks and the ESP32 module. The subt
 - Hirose U.FL-R-SMT-1(10) specification; ST ESDAXLC6-1BT2Y and USBLC6-2SC6Y data sheets; GCT USB4105 product specification; Molex 104031-0811 product specification.
 - Distributor stock/prices: DigiKey product pages for ESP32-S3-WROOM-1-N16R8, TCAN3404DRQ1, NEO-M9N-00B, LMQ66420MC3RXBRQ1, LM74502HQDDFRQ1, TPS22919QDCKRQ1, TCA6408AQPWRQ1, TPS1H100BQPWPRQ1, ACT45B-510-2P-TL003, U.FL-R-SMT-1(10), USB4105-GF-A-120 and 104031-0811; ST eStore for LDP01-28AY.
 
+- Worldsemi, [WS2812 family](https://world-semi.com/ws2812-family/) and WS2812B-2020 v1.3 data sheet; TI, [TPA2005D1-Q1](https://www.ti.com/product/TPA2005D1) and [LP5814](https://www.ti.com/product/LP5814).
+
 ## Remaining component blockers
 
 1. Approve the 12 V passenger-vehicle electrical test profile; then validate/freeze the input TVS and EMI components.
 2. Complete regulator magnetics, capacitor, loss and enclosure thermal calculations.
 3. Select the final display, shift-light and OBD harness connector families from mechanical/current/environment requirements.
-4. Select and acoustically test the onboard buzzer transducer in the enclosure.
+4. Approve or reject the proposed TPA2005D1-Q1 and LP5814 changes; then select and qualify the exact speaker, acoustic geometry and RGB LED.
+5. Select the exact V6-class shift-light pixel/order code and validate current, timing, EMC, cable and optics.
 5. Replace or approve the provisional microSD socket for the final temperature/access requirement.
 

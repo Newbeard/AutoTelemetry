@@ -1,6 +1,6 @@
 # Telemetry v1 requirements
 
-Status: Task 4 component-freeze baseline, audited 2026-08-14. Remaining blockers are listed in [`schematic-architecture.md`](schematic-architecture.md). Numerical evidence uses `VERIFIED_DATASHEET`, `CALCULATED`, `DESIGN_REQUIREMENT`, and `ASSUMPTION` as defined in [`power-budget.md`](power-budget.md).
+Status: Task 4.6 research freeze, audited 2026-08-17. Remaining blockers are listed in [`schematic-architecture.md`](schematic-architecture.md). Numerical evidence uses `VERIFIED_DATASHEET`, `CALCULATED`, `DESIGN_REQUIREMENT`, and `ASSUMPTION` as defined in [`power-budget.md`](power-budget.md).
 
 ## Scope and invariants
 
@@ -25,8 +25,8 @@ Status: Task 4 component-freeze baseline, audited 2026-08-14. Remaining blockers
 | GNSS-03 | Power control | Software-controlled GNSS power or backup strategy, with cold/warm-start trade-off documented |
 | DSP-01 | Interchangeable external display | Initial GC9A01 240×240 SPI display; later ST7789/AMOLED drivers without core redesign |
 | DSP-02 | Display connector | Frozen 14-position logical contract, switched 3.3 V/400 mA and optional 5 V/600 mA, cable ≤200 mm, initial SPI ≤20 MHz; physical connector remains a mechanical blocker |
-| SHF-01 | External shift-light output | TPS1H100B-Q1 protected 5 V/1 A and AHCT buffer for an 8–10 pixel short-cable load; cable ≤0.5 m |
-| ALM-01 | Audible alarm | Onboard-only, MOSFET-driven ≤200 mA branch; exact transducer and clamp population TBD |
+| SHF-01 | External shift-light output | Exactly ten WS2812-compatible addressable pixels, qualified load ≤0.50 A, separately protected by TPS1H100B-Q1 at a retained 1 A fault envelope, AHCT buffer, cable ≤0.5 m |
+| ALM-01 | Audible alarm | Proposed TPA2005D1-Q1 class-D driver and onboard 8 Ω, ≥1 W speaker within a 300 mA AUX5 branch; exact speaker/opening/back volume require acoustic qualification |
 | LOG-01 | microSD logging | Concurrent CAN/GNSS logging without electrical bus contention with the display |
 | BLE-01 | RaceChrono BLE link | BLE profile/protocol to be confirmed against current RaceChrono documentation |
 | EXP-01 | Expansion and debug | Expose I2C, UART/debug access, useful spare GPIO, and named test points for CAN-H/L, vehicle input, 3.3 V, GNSS UART, and ground |
@@ -53,6 +53,13 @@ Status: Task 4 component-freeze baseline, audited 2026-08-14. Remaining blockers
 | OUT-02 | Headless operation | CAN/GNSS acquisition, logging, protocol, shift-light, and alarms can operate with no display installed or initialized |
 | PRT-01 | Transport-independent API | First-party services and schemas are versioned independently from BLE, Wi-Fi, and USB bindings and support capability discovery |
 | CFG-01 | Central configuration | Product configuration is schema-versioned, validated, atomically persisted, migratable, exportable, and recoverable to a safe default |
+| CFG-02 | Local web configuration | Physical MODE authorization starts a time-bounded authenticated SoftAP session; normal telemetry remains bounded and Wi-Fi turns off on exit |
+| UPD-01 | Recoverable firmware update | Signed HTTPS OTA writes only an inactive slot, checks compatibility, self-tests pending firmware and rolls back on failure |
+| VEH-05 | Independently updateable profiles | Declarative, non-executable profile packages are authenticated, schema/runtime checked, staged and recoverable to built-in Generic OBD |
+| UI-01 | MODE behavior | Debounced short press acknowledges an active alarm or changes local indication; ≥3 s long press requests safe configuration mode; erase/reset needs separate confirmation |
+| UI-02 | Status indication | A proposed LP5814-controlled common-anode RGB indicator reports state without consuming three MCU GPIOs and remains off parked |
+| FUT-01 | Future tire telemetry boundary | A separate future module may publish normalized pressure, temperature, tread-temperature and health data; no tire electronics or transport is added to v1 |
+| TST-02 | Layered verification | Host tests, CAN/GNSS replay, virtual/physical ECU simulation and later HIL precede controlled vehicle validation |
 | RES-01 | Fault isolation | Acquisition cannot be blocked by display, storage, network, or client work; queues are bounded and timeouts, health state, restart policy, and watchdog ownership are explicit |
 | TST-01 | Deterministic verification | Core, profiles, scheduling, protocols, outputs, migrations, overload, and fault behavior are testable with deterministic clocks and provenance-controlled fixtures |
 | MEC-01 | Independent mechanical layers | Core enclosure, display enclosure, and vehicle mount are separately versioned and connected through controlled mechanical/electrical contracts |
@@ -73,9 +80,9 @@ Status: Task 4 component-freeze baseline, audited 2026-08-14. Remaining blockers
 - Exact automotive pulse severity, temperature grade, enclosure, cable environment, compliance markets, and production volume.
 - Whether a later hardware-off CAN wake variant is worth its added 5 V/AON sequencing; it is not required for Telemetry v1 unless rail-on measurements fail.
 - Exact physical display connector family and module adapters; the electrical rail/current/cable contract is frozen.
-- Exact onboard buzzer transducer and whether the provisional inductive clamp is populated.
+- Exact onboard 8 Ω speaker, acoustic opening/back volume, sealed acoustic path, and measured in-cabin sound-pressure acceptance limits.
 - GNSS V_BCKP follows switched GNSS power in v1; host save/restore performance remains to be tested.
-- Firmware platform/dependency versions, profile/config serialization formats, canonical wire encoding, security/authentication model, update mechanism, and runtime resource budgets.
+- Firmware platform/dependency versions, profile/config serialization formats, canonical wire encoding, full security/threat model, signing-key process, and runtime resource budgets.
 - Exact profile matching policy, supported diagnostic services per vehicle, and the criteria for detecting/coexisting with another scan tool.
 - First-party app platforms and BLE/Wi-Fi/USB transport bindings.
 - Core/display mount interface, enclosure material/process, environmental limits, and mount load cases.

@@ -247,8 +247,8 @@ Preserve ESP32-S3 native USB on GPIO19/20 and use USBLC6-2SC6Y connector ESD, Ty
 | GNSS main power | None | Independent ≥200 mA GNSS_3V3 switch and protected antenna bias | Peak/inrush, RF noise and parked isolation | High |
 | GNSS backup | None | V_BCKP follows switched VCC; host save/restore investigated | Zero parked backup current and no storage lifecycle | Medium |
 | Display power | Generic 3V3_SWITCHED | 3.3 V/400 mA and optional 5 V/600 mA switched contracts | Module independence; controller current is not backlight current | Medium until module selection |
-| Shift-light power | None | Switched/current-limited 5 V/1 A plus buffered data | Supports 8–10 addressable LEDs without GPIO loading | Medium |
-| Buzzer | None | MOSFET-driven ≤200 mA branch; clamp per chosen load | GPIO protection and PWM capability | Medium |
+| Shift-light power | None | Ten-pixel, 0.50 A qualified load; retained protected 5 V/1 A fault envelope plus buffered data | Supports the frozen addressable load without GPIO power | Medium pending exact pixel/connector |
+| Sounder | None | Proposed TPA2005D1-Q1, 300 mA branch and provisional 8 Ω speaker | Programmable volume/tone and protected BTL drive | Medium pending proposal approval/acoustic test |
 | USB power isolation | Schottky from VBUS into VCC/enable path | Reverse-blocked source OR before main buck; AUX5 off on USB-only | Supports all four cases without vehicle/host back-feed | High architecture; low exact part |
 
 ## Unresolved items and validation gates
@@ -256,7 +256,7 @@ Preserve ESP32-S3 native USB on GPIO19/20 and use USBLC6-2SC6Y connector ESD, Ty
 - Agree the actual 12 V electrical pulse, cranking, jump-start, ESD and temperature test profile; then select and calculate the protection chain.
 - Complete LMQ66420-Q1 inductor/capacitor, loss, stability, thermal/EMI, crank and transient-headroom calculations before schematic release.
 - Confirm GPIO13 CAN wake, GPIO8 vehicle-activity wake, and all power-off signal isolation in an ESP32-S3 prototype.
-- Select the exact active antenna, production card/socket, physical display connector/module adapter, and buzzer; replace remaining envelopes with maximum data and measurements.
+- Select the exact active antenna, production card/socket, physical display connector/module adapter, shift pixel, speaker and status LED; replace remaining envelopes with maximum data and measurements.
 - Validate GNSS 25 Hz configuration/message set and interference with the buck, ESP RF, SPI and external cables.
 - Define ground/chassis strategy, connector families/pin numbering, cable construction and environmental ratings.
 - Bench all USB source combinations and abnormal connections; confirm no reverse current into USB VBUS or OBD battery.

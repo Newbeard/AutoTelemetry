@@ -1,6 +1,6 @@
 # Telemetry v1 power budget
 
-Status: Task 4 component-freeze budget, 2026-08-14. It is not a released schematic or an automotive-compliance claim.
+Status: Task 4.6 research-freeze budget, 2026-08-17. It is not a released schematic or an automotive-compliance claim.
 
 ## Evidence convention
 
@@ -23,8 +23,8 @@ Datasheet “typical” values are not guaranteed maxima. Unknown marketplace di
 | GC9A01A controller | switched 3.3 V | Exact operating current unresolved | Exact maximum unresolved | included in display-module envelope | `VERIFIED_DATASHEET`: GC9A01A preliminary data sheet v1.0 Table 44 gives VCI 2.5–3.3 V and IOVCC 1.65–3.3 V, but the reviewed table does not establish complete module/backlight current. No unsupported controller-current number is used. |
 | Representative 1.28-inch display module | switched 3.3 V or 5 V | Module/backlight not selected | Marketplace modules differ | 300 mA at 3.3 V **or** 500 mA at 5 V | `DESIGN_REQUIREMENT`: connector envelopes, including controller, backlight and cable loss. Only one supplied rail may be enabled/configured for a module. Replace after exact module selection. |
 | TCAN3404-Q1 | always-on 3.3 V | 7 mA recessive typical | 55 mA dominant maximum at 60 Ω; 130 mA current-limited bus-fault case; 17 µA standby maximum at 150 °C | 8.2 mA active max, 55 mA dominant peak, 17 µA parked | `VERIFIED_DATASHEET`: TI SLLSFQ6A Tables 7-1/7-2. The 130 mA fault current is a protection/thermal case, not an ordinary rail capacity load. |
-| External shift light | switched 5 V | application dependent | Ten legacy-class RGB LEDs could be 10 × 60 mA = 600 mA | 1.0 A connector/rail envelope | `VERIFIED_DATASHEET`: WS2812B-2020 v1.3 specifies 3.7–5.3 V, VIH ≥2.7 V and 12 mA per color working current, implying 360 mA for ten all-white LEDs. `ASSUMPTION`: legacy/interchangeable pixels may require 60 mA each. `CALCULATED`: 10 × 60 mA = 600 mA. `DESIGN_REQUIREMENT`: 1.0 A protected output gives 67% margin over 600 mA. |
-| Buzzer | switched 5 V or 3.3 V | Part not selected | Magnetic/piezo, active/passive unknown | 200 mA output envelope | `DESIGN_REQUIREMENT`: MOSFET-driven, current-limited/fused branch; select clamp only after load type is known. |
+| External shift light | switched 5 V | 10 pixels, one color at 50% PWM: 60.010 mA | 10 × 3 colors × 12 mA + ≤0.010 mA quiescent = 360.010 mA | 0.50 A qualified load; separate 1 A protected fault envelope | `VERIFIED_DATASHEET`: WS2812B-2020 v1.3 specifies 12 mA/color and <0.6 mA quiescent; the preferred V6 family advertises 3.3–5.5 V and 12 mA/color, but its exact controlled ordering code remains provisional. `CALCULATED`: 0.36001 A × 1.25 = 0.450 A, rounded to 0.50 A. |
+| Proposed sound output | switched 5 V | Program dependent | 1 W into 8 Ω design output | 300 mA branch | `VERIFIED_DATASHEET`: TPA2005D1-Q1 operates at 2.5–5.5 V, is AEC-Q100, and delivers up to 1.4 W into 8 Ω at 5 V/10% THD. `ASSUMPTION`: 75% end-to-end efficiency. `CALCULATED`: 1 W/(5 V×0.75)+2.8 mA = 269.5 mA, rounded to 300 mA. |
 | TPS22919-Q1 load switches ×4 | associated rail | 90 mΩ typical | 1.5 A device rating; 2 nA typical shutdown | ≤1 µA aggregate parked allocation | `VERIFIED_DATASHEET` device characteristics; `DESIGN_REQUIREMENT` allocation includes temperature/leakage margin. Reverse-current behavior and discharge population must be verified per branch. |
 | Miscellaneous PCB loads | 3.3 V | sensors, pull-ups and status circuits not selected | — | 20 mA active; 10 µA parked | `DESIGN_REQUIREMENT`; indicator LEDs must be off in sleep. |
 
@@ -59,8 +59,8 @@ Here 50 mA SD and 150 mA display are assumptions pending actual parts. At 12 V a
 
 ```text
 IAUX5_peak = display_5V + shift_light + buzzer
-           = 0.50 + 1.00 + 0.20 = 1.70 A              [CALCULATED]
-Required capacity = 1.70 A × 1.15 = 1.955 A            [CALCULATED]
+           = 0.50 + 0.50 + 0.30 = 1.30 A              [CALCULATED]
+Required capacity = 1.30 A × 1.25 = 1.625 A            [CALCULATED]
 AUX5 rating ≥2.0 A, current limited, normally off      [DESIGN_REQUIREMENT]
 ```
 
@@ -74,8 +74,8 @@ The 5 V display allocation is not added when a module uses the 3.3 V display all
 | SD_3V3 | 200 mA | 200 × 1.25 = 250 mA | ≥250 mA; bulk capacitance set after card inrush measurement |
 | DISPLAY_3V3 | 300 mA | 300 × 1.25 = 375 mA | ≥400 mA |
 | DISPLAY_5V | 500 mA | 500 × 1.20 = 600 mA | ≥600 mA within the 2 A AUX5 total |
-| SHIFT_5V | 1.0 A envelope | already includes 67% over 600 mA | ≥1.0 A, protected |
-| BUZZER | 200 mA envelope | part still unknown | ≥200 mA, driver/clamp matched to load |
+| SHIFT_5V | 500 mA qualified load | 450 mA calculation rounded up | ≥500 mA qualified; retain ≥1.0 A protected fault envelope |
+| SOUNDER5 | 300 mA envelope | 269.5 mA calculation rounded up | ≥300 mA; validate transient and thermal overlap |
 
 All rows are `CALCULATED` plus `DESIGN_REQUIREMENT` unless otherwise stated. Load-switch voltage drop and heating must be checked at the stated branch current.
 
@@ -145,6 +145,10 @@ Primary sources are listed below. LMQ66420MC3RXBRQ1 silicon is frozen for both c
 - Swissbit, *PS-66 SD-LxPT Product Data Sheet*, Rev. 1.01, electrical characteristics operating-current table.
 - GalaxyCore, [GC9A01A Data Sheet v1.0 preliminary](https://buydisplay.com/download/ic/GC9A01A.pdf), §7.2 Table 44.
 - Worldsemi, [WS2812B-2020 Data Sheet v1.3](https://cdn-shop.adafruit.com/product-files/4684/4684_WS2812B-2020_V1.3_EN.pdf), pp. 2–3.
+- Worldsemi, [WS2812 family](https://world-semi.com/ws2812-family/), V6 family overview; exact V6 controlled data sheet/order code remains open.
+- TI, [TPA2005D1-Q1](https://www.ti.com/product/TPA2005D1), automotive mono class-D amplifier data sheet and product status.
+- TI, [LP5814](https://www.ti.com/product/LP5814), four-channel I2C LED driver data sheet and product status.
+- Belden, [1213A 26 AWG cable](https://www.belden.com/products/cable/electronic-wire-cable/multi-conductor-cable/1213a), 44.4 Ω/1000 ft conductor-resistance reference.
 - TI product data: [LMQ66420-Q1](https://www.ti.com/product/LMQ66420-Q1), [LM53602-Q1](https://www.ti.com/product/LM53602-Q1), [TPS7B82-Q1](https://www.ti.com/product/TPS7B82-Q1).
 - Infineon, [TLS4120D0EP V33](https://www.infineon.com/part/TLS4120D0EP-V33).
 - Analog Devices, [MAX20004/MAX20006/MAX20008](https://www.analog.com/en/products/max20006.html).
@@ -152,7 +156,7 @@ Primary sources are listed below. LMQ66420MC3RXBRQ1 silicon is frozen for both c
 ## Open verification items
 
 - Measure ESP32-S3-WROOM-1-N16R8 branch current with flash/PSRAM and all pulls in the intended deep-sleep configuration.
-- Select exact microSD, display module/backlight, active antenna, shift-light and buzzer; replace envelopes with guaranteed maxima and inrush waveforms.
+- Select exact microSD, display module/backlight, active antenna, V6-class shift pixel ordering code, RGB status LED and speaker; replace provisional values with guaranteed maxima and measured inrush/acoustics.
 - Establish load overlap policy and actual firmware duty cycles.
 - Complete chosen regulator loss, junction-temperature, inductor, capacitor, stability, startup and conducted/radiated EMI calculations after the automotive transient profile and schematic are defined.
 - Verify every disabled peripheral signal is high-impedance so it cannot be phantom-powered through GPIO protection structures.

@@ -44,17 +44,18 @@ This is a descriptive reading of the source, not a validation. Exact diode direc
 | GNSS_3V3 | NEO-M9N and antenna-bias controls | TPS22919QDCKRQ1 | ≥200 mA; off parked |
 | SD_3V3 | microSD | TPS22919QDCKRQ1 | ≥250 mA; off parked |
 | DISPLAY_3V3 | external module | TPS22919QDCKRQ1 and 2N7002KQ BL control | ≥400 mA; off parked |
-| AUX5 | display option and shift-light source | LMQ66420MC3RXBRQ1 | ≥2.0 A aggregate; off parked; enabled by GPIO21 |
+| AUX5 | display option, shift-light and sounder source | LMQ66420MC5RXBRQ1 | ≥2.0 A aggregate; off parked; enabled by GPIO21 |
 | DISPLAY_5V | optional display rail | TPS22919QDCKRQ1 from AUX5 | ≥600 mA; mutually exclusive with incompatible display power |
-| SHIFT_5V | external light | TPS1H100BQPWPRQ1 from AUX5 | 1.0 A protected output; cable ≤0.5 m |
+| SHIFT_5V | external ten-pixel light | TPS1H100BQPWPRQ1 from AUX5 | 0.50 A qualified load, 1.0 A protected fault envelope; cable ≤0.5 m |
+| SOUNDER5 | onboard sounder | proposed TPA2005D1-Q1 from AUX5 | 300 mA design envelope; exact speaker provisional |
 
-`CALCULATED`: the 3.3 V simultaneous peak envelope is 1.050 A; after 25% margin it is 1.313 A, so the required regulator class is ≥2.0 A. `CALCULATED`: the 5 V external-load sum is 1.70 A and 15% margin produces 1.955 A, so AUX5 is ≥2.0 A. See the source-to-formula chain in `power-budget.md`.
+`CALCULATED`: the 3.3 V simultaneous peak envelope is 1.050 A; after 25% margin it is 1.313 A, so the required regulator class is ≥2.0 A. `CALCULATED`: the 5 V named-load sum is 1.30 A and 25% margin produces 1.625 A, so AUX5 remains ≥2.0 A. See the source-to-formula chain in `power-budget.md`.
 
 ## Parked result
 
 The complete tree includes the conservatively bounded 110 µA LM74502H-Q1/input-protection allocation, buck IQ, vehicle sensing, TCAN standby, ESP32 branch, wake logic, disabled switches, TCA6408A/residual logic, protection leakage, and miscellaneous leakage. `CALCULATED`: subtotal 185.3 µA and a 100% allowance give ≤370.6 µA (0.371 mA) at 12 V. GNSS backup and LEDs are off. This supports the <1 mA requirement and leaves only 0.129 mA to the <0.5 mA stretch target; complete-board measurements over voltage/temperature remain mandatory.
 
-The vehicle input freeze is 0437002A WRA fuse → provisional LDP01-28AY TVS → LM74502HQDDFRQ1 with back-to-back DMT6007LFGQ-7 MOSFETs → provisional damped filter → converters. The TVS and filter remain provisional because the exact vehicle pulse profile, source impedance, clamp energy, ringing, and downstream derating are not yet defined. At the 14.108 W calculated output envelope and an assumed 80% efficiency, 12 V input current is 1.470 A; the 2 A fuse has 36.1% current margin (`ASSUMPTION` + `CALCULATED`), not a proven hot hold/trip result.
+The vehicle input freeze is 0437002A WRA fuse → provisional LDP01-28AY TVS → LM74502HQDDFRQ1 with back-to-back DMT6007LFGQ-7 MOSFETs → provisional damped filter → converters. The TVS and filter remain provisional because the exact vehicle pulse profile, source impedance, clamp energy, ringing, and downstream derating are not yet defined. At the 12.458 W calculated output envelope and an assumed 80% efficiency, 12 V input current is 1.298 A; the 2 A fuse has 54.1% current margin (`ASSUMPTION` + `CALCULATED`), not a proven hot hold/trip result.
 
 ## Required calculations and tests before layout
 

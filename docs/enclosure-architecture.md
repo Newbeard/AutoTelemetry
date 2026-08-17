@@ -18,6 +18,12 @@ vehicle-specific mount  ->  display enclosure  ->  display electrical contract
 
 No vehicle name, display controller, or dashboard geometry belongs in the core-device enclosure source.
 
+## Removable user-I/O accessories
+
+The shift-light is a fourth accessory assembly, not a change to the three enclosure/mount layers. It contains exactly ten small addressable LEDs on a narrow flex/rigid-flex or narrow PCB, local bypass capacitors, black optical wells, a diffusing face, cable strain relief and a removable Dual Lock-class attachment. The bend axis, component keep-outs, minimum bend radius, cable exit and service replacement are controlled parameters. It must not become a structural part of the display or core enclosure.
+
+The core enclosure must reserve an acoustically intentional path for the proposed onboard 8 Ω speaker: protected opening or membrane, defined back volume, no water/debris trap and no direct stress on the speaker. It must also provide a visible RGB status light pipe/window and distinct access for MODE versus recessed RESET/BOOT. Exact geometry awaits selected components and acoustic/ingress tests.
+
 ## Parametric source-of-truth rules
 
 - Native editable CAD is the source of truth; STEP is the neutral review/interchange format.
@@ -63,7 +69,7 @@ Derived meshes must never be the sole editable source.
 | USB and microSD | Preserve insertion/removal clearance and prevent accidental vehicle-side back-feed assumptions. |
 | GNSS | Do not pinch or sharply bend the coax; preserve U.FL mating/service space and RF keep-outs. |
 | Display cable | Initial assumption remains <=200 mm and SPI <=20 MHz until signal-integrity validation; provide bend and connector retention space. |
-| Shift-light cable | For runs longer than 0.5 m, the system requires review of an intelligent/differential external module and EMC behavior. |
+| Shift-light cable | ≤0.5 m, strain relieved, power/ground ≥26 AWG (24 AWG preferred), data ≥28 AWG with adjacent/twisted ground; longer runs require an intelligent/differential module and EMC review. |
 | Display | Aperture, active area, bezel, viewing angle, backlight heat, buttons/touch, and connector sweep are profile parameters. |
 | Mount interface | Display enclosure owns a stable attachment datum; vehicle mount owns vehicle geometry and breakaway/retention behavior. |
 | Mounting points | Location, datum, fastener/insert specification, pull-out/load case, installation access and tolerance are versioned interface data. |
@@ -101,3 +107,5 @@ Released source geometry should accumulate as a reusable, indexed library of mea
 - Core/display attachment standard and cable connector family.
 - Mount load cases and acceptable vehicle attachment methods.
 - Exact GC9A01 module mechanical drawing and target BMW E81 trim/location measurements.
+- Exact shift-light pixel/flex construction, diffuser, adhesive system, bend limits and connector.
+- Exact speaker, acoustic opening/back volume, ingress treatment, status light pipe and service-button access geometry.

@@ -211,6 +211,18 @@ Mechanical work has three separately versioned layers: core-device enclosure, di
 
 ## Source discipline
 
+Before designing or implementing any non-trivial subsystem, research and record, as applicable:
+
+1. official manufacturer documentation;
+2. official reference designs;
+3. applicable standards;
+4. mature open-source implementations; and
+5. established engineering best practices.
+
+Primary/manufacturer sources remain authoritative. Open-source implementations are engineering references, not automatically production-ready designs. Do not reinvent an established solution without first researching it.
+
+Before copying, adapting, linking, or vendoring external code or hardware designs, identify the exact upstream version and license, document the license and reuse implications, and classify the intended use as one of `REFERENCE_ONLY`, `DEVELOPMENT_TOOL`, `LIBRARY_DEPENDENCY`, `VENDORED_COMPONENT`, or `DERIVED_WORK`. Unclear-license material must not be integrated.
+
 For engineering conclusions, prefer authoritative sources in this order:
 
 1. actual repository schematic / PCB / BOM / source files

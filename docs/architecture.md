@@ -1,6 +1,6 @@
 # Universal OBD/CAN + GNSS Telemetry Gateway architecture
 
-Status: product architecture reconciled to the Task 4 component freeze. This document defines boundaries and responsibilities, not firmware tasks, wire formats, schemas, or code.
+Status: product architecture reconciled to the Task 4.6 research freeze. This document defines boundaries and responsibilities, not firmware tasks, wire formats, schemas, or code.
 
 ## Product and monorepo boundary
 
@@ -131,7 +131,7 @@ Drivers know electrical/controller behavior but no vehicle channels. Layouts req
 
 ### Shift-light
 
-The shift-light subscribes to a configured normalized channel, normally `RPM`. Configuration owns activation, staged thresholds, flash threshold, brightness, day/night profile, output device, and missing/stale-data behavior. It does not depend on RaceChrono, a display, or a phone.
+The removable external shift-light contains exactly ten addressable RGB pixels, local bypass capacitors, optical wells/diffusion and cable strain relief. It subscribes to a configured normalized channel, normally `RPM`. Configuration owns activation, staged thresholds, flash threshold, brightness, day/night profile, output device, and missing/stale-data behavior. It does not depend on RaceChrono, a display, or a phone. Electrical and mechanical details are frozen in [`user-io-configuration.md`](user-io-configuration.md).
 
 ### Alarms
 
@@ -191,6 +191,12 @@ A centralized configuration service owns:
 - GNSS, logger, protocol, and power/sleep settings.
 
 Drivers receive validated configuration snapshots; constants are not scattered through modules. Configuration has independent schema version, transactional validation, migration, defaults, provenance, and rollback to the last-known-good copy. Unknown/new fields are preserved where practical. Writes are authenticated/authorized as required by the eventual threat model; transport connection alone is not authorization.
+
+The future web UI and first-party app are clients of the same configuration manager and public API. Web setup is an explicitly requested, authenticated, time-limited SoftAP mode; it is not a second configuration store. Firmware and vehicle-profile updates stage, authenticate, validate and activate independently, always retaining a recovery path. The complete policy is in [`user-io-configuration.md`](user-io-configuration.md).
+
+## Future tire module and second CAN
+
+Tire pressure, tire temperature and left-to-right tread-temperature arrays are future normalized producers, not Telemetry v1 sensor hardware. A separate module is preferred and its transport remains open. RaceChrono naming must be verified against the target app release. ESP32-S3 has one native TWAI controller; neither a second CAN controller nor an ESP32-C6 migration is authorized for v1.
 
 ## Hardware partition and states
 
