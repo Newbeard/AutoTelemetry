@@ -1,15 +1,15 @@
 # User I/O, configuration and future Tire Module architecture
 
-Status: Task 4.6 architecture/interface freeze, 2026-08-17. This document does not authorize firmware, schematic, PCB, flex-layout, CAD, Tire Module electronics, or manufacturing work.
+Status: Task 4.7 synchronized architecture/interface freeze, 2026-08-17. This document does not authorize firmware, schematic, PCB, flex-layout, CAD, Tire Module electronics, or manufacturing work.
 
 ## Scope and disposition
 
 Telemetry v1 keeps the ESP32-S3, one Classical CAN channel, GPIO map, 2 A AUX5 rail, 1 A protected shift branch, and three-wire shift-light connector from Task 4. The future AutoTelemetry Tire Module remains a separate product.
 
-Two Task 4 hardware assumptions are reopened only as explicit proposals:
+Task 4.7 resolves two previously proposed Task 4 hardware changes:
 
-- **PROPOSED CHANGE — sounder:** replace the MOSFET-only buzzer path with a 5 V mono class-D amplifier and small speaker. GPIO17 and the AUX5 domain remain unchanged.
-- **PROPOSED CHANGE — status:** replace the one-color expander LED sink with one RGB LED driven by an I2C RGB driver. No direct ESP32 GPIO is added; expander P6 becomes the driver's hardware enable/default-off control.
+- **APPROVED DIRECTION — sounder:** replace the MOSFET-only buzzer path with a 5 V mono class-D amplifier and small speaker. GPIO17 and the AUX5 domain remain unchanged.
+- **APPROVED — status:** replace the one-color expander LED sink with one RGB LED driven by an I2C RGB driver. No direct ESP32 GPIO is added; expander P6 becomes the driver's hardware enable/default-off control.
 
 No other current-v1 hardware change is identified by this task.
 
@@ -123,7 +123,7 @@ The Configuration Manager owns enable, source channel, RPM start/progression/fla
 
 **Recommendation:** small 8 ohm speaker plus a mono analog-input class-D amplifier.
 
-**PROPOSED CHANGE:** use `TPA2005D1-Q1` in its MSOP-PowerPAD package as the schematic candidate. TI specifies 2.5-5.5 V operation, -40 to +85 C, 1.4 W typical into 8 ohm at 5 V/10% THD, 84% efficiency at 400 mW, 2.8 mA quiescent current, 0.5 uA shutdown, and short/thermal protection. The exact speaker remains `PROVISIONAL`; it must be at least 1 W rated, 8 ohm, suitable for the final temperature and mounting environment, and qualified in the real enclosure. PUI `AS01808AO-SC18-WP-R` demonstrates that a 1 W, 8 ohm, 18 x 13 x 2.5 mm, IP68-face device with 96 +/-3 dBA at 10 cm in a 1 cc test volume is feasible; it is a reference, not the frozen transducer.
+**APPROVED DIRECTION:** use exact order code `TPA2005D1TDGNRQ1` in its MSOP-PowerPAD package. TI specifies 2.5-5.5 V operation and -40 to +105 C for the T-suffix order code, 1.4 W typical into 8 ohm at 5 V/10% THD, 84% efficiency at 400 mW, 2.8 mA quiescent current, 0.5 uA shutdown, and short/thermal protection. The exact speaker remains `PROVISIONAL`; it must be at least 1 W rated, 8 ohm, suitable for the final temperature and mounting environment, and qualified in the real enclosure. PUI `AS01808AO-SC18-WP-R` demonstrates that a 1 W, 8 ohm, 18 x 13 x 2.5 mm, IP68-face device with 96 +/-3 dBA at 10 cm in a 1 cc test volume is feasible; it is a reference, not the frozen transducer.
 
 The existing GPIO17 generates a high-rate PWM/audio waveform into a reconstruction/coupling network; it never sources speaker current. The amplifier drives the speaker differentially from AUX5. Hardware gain and input clamp/filter values must ensure that every GPIO/PWM state is safe. Software amplitude sets volume; tone frequency, cadence and envelope provide multiple alarm signatures. `STREET` and `TRACK` are bounded volume presets, with user mute and percentage control. Critical alarm state remains active when the audible presentation is acknowledged or muted.
 
@@ -172,7 +172,7 @@ RESET/EN and BOOT/GPIO0 remain distinct PCB/service controls. The enclosure must
 
 One user-visible RGB indicator communicates state; no always-on power LED is added. Exact color/flash policy remains firmware policy, with patterns available for boot, vehicle/CAN detection, GNSS search/fix, BLE connection, configuration, update and fault. Priority must prevent a benign connection indication from hiding an update/fault state. It is off in PARKED/SLEEP except a bounded, explicitly requested service diagnostic.
 
-**PROPOSED CHANGE:** fit TI `LP5814DRLR`, a catalog I2C four-channel constant-current RGBW driver, on MAIN_3V3. TI lists 2.5-5.5 V, 0.1-51 mA/channel, 8-bit dot-current and PWM control, autonomous patterns, 0.1 uA typical shutdown, -40 to +125 C, and an 8-pin SOT-5X3 package. Use three sinks with one common-anode RGB LED; exact LED and optical current remain provisional. Shared I2C adds no direct GPIO. Reassign `EXP_P6` from `STATUS_LED_N` to `STATUS_DRV_EN` with a hardware default-off pull. This is an expander-function change, not an ESP32 allocation change.
+**APPROVED:** fit TI `LP5814DRLR`, a catalog I2C four-channel constant-current RGBW driver, on MAIN_3V3. TI lists 2.5-5.5 V, 0.1-51 mA/channel, 8-bit dot-current and PWM control, autonomous patterns, 0.1 uA typical/0.3 uA maximum shutdown, -40 to +125 C, and an 8-pin SOT-5X3 package. Use three sinks with one common-anode RGB LED; exact LED and optical current remain provisional. Shared I2C adds no direct GPIO. Reassign `EXP_P6` from `STATUS_LED_N` to `STATUS_DRV_EN` with a hardware default-off pull. This is an expander-function change, not an ESP32 allocation change.
 
 ## Central Configuration Manager
 

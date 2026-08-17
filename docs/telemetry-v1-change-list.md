@@ -16,7 +16,7 @@ This is a review list, not authorization to edit the v3.4 design. “KEEP” mea
 
 ## MODIFY
 
-- Recalculate/redesign the complete OBD input protection for the agreed vehicle transient and compliance profile; do not copy the existing circuit as proof of safety.
+- Implement the frozen Task 4.7 OBD input chain and calculate the remaining divider/inrush/filter passives; do not copy the upstream circuit or claim compliance.
 - Replace standard/catalog U2 with TCAN3404DRQ1. Replace U4 with LMQ66420MC3RXBRQ1; use the same regulator silicon for switched AUX5, with independent exact passives and thermal validation.
 - Add connector-local ESDCAN04-2BWY and an ACT45B-510-2P-TL003 footprint, DNP by default with 0 Ω bypasses.
 - Make CAN termination default state explicit and likely normally open for an OBD stub; retain service/configurability only if justified.
@@ -34,13 +34,13 @@ This is a review list, not authorization to edit the v3.4 design. “KEEP” mea
 ## ADD
 
 - Onboard NEO-M9N-00B using GPIO15/16 UART at 230,400 bit/s, switched ≥200 mA rail, V_BCKP following that rail, decoupling and test points. Record that this order code is professional-grade, not automotive-qualified.
-- Hirose U.FL-R-SMT-1(10), ESDAXLC6-1BT2Y, and 50 Ω RF section with the u-blox 100 nF/27 nH bias-T starting topology and 22 Ω ≥0.5 W passive short-current limiter. Exact antenna remains a blocker.
+- Hirose U.FL-R-SMT-1(10), active AQ3118E-01ETG, and 50 Ω RF section with the u-blox 100 nF/27 nH bias-T topology. Exact antenna and validated passive/active short-current limiter remain blockers.
 - RF keep-out/placement rules separating GNSS from ESP32 antenna, buck switch node, CAN edges, SD/display clocks, and cables.
 - Universal display connector: dual GND, switched 3.3 V/optional 5 V, SPI, CS, DC, reset, driven PWM/enable, optional I2C and INT/TE; initial ≤200 mm/20 MHz cable contract.
 - TPS1H100BQPWPRQ1 protected 5 V/1 A fault envelope and CAHCT1G126QDCKRQ1 buffered data on GPIO6 for exactly ten shift pixels, a 0.50 A qualified load and cable ≤0.5 m.
-- `PROPOSED CHANGE`: TPA2005D1-Q1 on GPIO17 with a 300 mA AUX5 envelope and provisional onboard 8 Ω, ≥1 W speaker.
-- `PROPOSED CHANGE`: LP5814DRLR on I2C with P6 `STATUS_DRV_EN` and a provisional common-anode RGB status LED.
-- Vehicle input using 0437002A WRA, LM74502HQDDFRQ1, and two DMT6007LFGQ-7 MOSFETs. LDP01-28AY and the input filter remain provisional until the pulse profile is fixed.
+- `APPROVED DIRECTION`: TPA2005D1TDGNRQ1 on GPIO17 with a 300 mA AUX5 envelope and provisional onboard 8 Ω, ≥1 W speaker.
+- `APPROVED`: LP5814DRLR on I2C with P6 `STATUS_DRV_EN` and a provisional common-anode RGB status LED.
+- Vehicle input using `0437002A`, bidirectional `SM8SF24CA-Q`, `LM74502QDDFRQ1`, and two `DMT6007LFGQ-7` MOSFETs. Freeze damped post-switch C-L-C topology; exact L/C/R and threshold/inrush values remain Task 5 calculations.
 - USB input using USBLC6-2SC6Y, TPS2553QDBVRQ1 with 43.2 kΩ ILIM, and PMEG6030EP-Q reverse isolation; USB-only load ≤500 mA.
 - MODE button on non-strap GPIO10.
 - Named test points for GND, protected vehicle input, main/switchable rails, CAN-H/L, CAN logic RX/TX, and GNSS UART/power.
@@ -64,5 +64,5 @@ Candidates to omit from the **new derivative** after review:
 ## Review gates before any schematic edit
 
 1. Review and approve the Task 4 component freeze and schematic architecture.
-2. Close the explicitly listed schematic blockers: 12 V pulse/crank/ESD/temperature profile, input clamp/filter calculations, exact antenna, card/socket mechanics, display connector, buzzer, and converter/passive/thermal calculations.
+2. Close the explicitly listed schematic blockers: UV/OV/inrush/fuse/filter calculations, exact antenna limiter, card/socket mechanics, display connector/ESD, speaker/LED, and converter passive/thermal calculations.
 3. Only then begin schematic capture as a separate task.

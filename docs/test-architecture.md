@@ -1,6 +1,6 @@
 # Product test architecture
 
-Status: Task 4.6 verification architecture. It defines evidence and fixture boundaries, not implemented tests or released pass limits.
+Status: Task 4.7 verification architecture. It defines evidence and fixture boundaries, not implemented tests or released pass limits.
 
 ## Principles
 
@@ -34,6 +34,22 @@ Status: Task 4.6 verification architecture. It defines evidence and fixture boun
 | Power/sleep | Wake causes, shutdown ordering, state persistence, brownout recovery, parked-current states, and no unintended transmission during transitions. |
 | Hardware-in-loop | CAN transceiver/mode behavior, timing/load, USB paths, GNSS UART, display/shift/alarm outputs, SD, sleep/wake, and programmed fault states. |
 | Electrical/mechanical | Power transient, thermal, ESD/EMC, RF, cable, connector, vibration, enclosure fit, and vehicle-mount safety plans with separately approved limits. |
+
+## Task 4.7 prototype electrical validation
+
+| Area | Future evidence |
+|---|---|
+| Input/parked/active current | Per-path and complete-board measurements at 12 V/25 °C and approved voltage/temperature corners |
+| Crank/brownout | Approved waveforms, controlled reset, no reboot loop, CAN safe state, SD recovery and staged peripheral restart |
+| Reverse/transient | Current-limited −14 V/60 s reverse test and approved positive/negative/transient matrix with simultaneous raw/protected measurements |
+| Rail/filter/thermal | UV/OV hysteresis, inrush, filter impedance/stability, ripple/load steps and hot-enclosure regulator/protection/load-switch temperatures |
+| CAN | RX/TX, hardware/software LISTEN_ONLY, standby wake, bounded diagnostics, faults, termination OFF and unpowered loading |
+| USB coexistence | Neither/OBD-only/USB-only/both, slow and fast OBD sag through the source crossover, reverse current into OBD/VBUS |
+| GNSS/SD | 25 Hz UART, active-antenna voltage/current/short/RF effect, SD write/brownout and converter/output desense |
+| Shift/audio/status | 0.5 A dummy and real ten-pixel load, shorts/hot plug/ESD, maximum audio/thermal/EMI, LP5814 default-off and MODE/BOOT/RESET |
+| Compliance | Separately approved ISO 7637-2, ISO 16750-2, ISO 10605, CISPR 25 and applicable UNECE R10 plan; ordinary bench results do not establish compliance |
+
+The detailed safe sequence, nodes and acceptance cautions are in [`input-protection-architecture.md`](input-protection-architecture.md). No destructive test is authorized by this plan.
 
 ## Repository and fixture model
 

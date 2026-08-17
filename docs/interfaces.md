@@ -2,7 +2,7 @@
 
 ## ESP32-S3 allocation
 
-This Task 4.6 allocation supersedes the preliminary Task 2 table. It is based on the RejsaCAN v3.4 single-sheet schematic, `RejsaCAN v3.4 - Pinout.h`, and the ESP32-S3-WROOM-1 v1.8 pin/strap tables. It defines the future derivative schematic and does not modify the reference files.
+This Task 4.7 allocation supersedes the preliminary Task 2 table. It is based on the RejsaCAN v3.4 single-sheet schematic, `RejsaCAN v3.4 - Pinout.h`, and the ESP32-S3-WROOM-1 v1.8 pin/strap tables. It defines the future derivative schematic and does not modify the reference files.
 
 | Function | ESP32-S3 GPIO | Direction | Reference status / conflict | Status |
 |---|---:|---|---|---|
@@ -16,7 +16,7 @@ This Task 4.6 allocation supersedes the preliminary Task 2 table. It is based on
 | Display CS/DC/reset | 47/48/12 | Out | Reference breakouts | `FROZEN` |
 | Display backlight PWM | 7 | Out | Rear breakout | `FROZEN`; through open-drain driver |
 | Shift-light data | 6 | Out | Rear breakout | `FROZEN`; through 5 V buffer |
-| Buzzer PWM | 17 | Out | Reference FORCE_ON is replaced by rail-on architecture | `FROZEN`; MOSFET driver |
+| Sound PWM | 17 | Out | Reference FORCE_ON is replaced by rail-on architecture | `FROZEN`; TPA2005D1TDGNRQ1 input |
 | I2C SDA/SCL | 1/2 | I/O | Existing I2C connector | `FROZEN`; also TCA6408A-Q1 |
 | MODE button | 10 | In | Reclaims BLUE LED | `FROZEN`; non-strap RTC GPIO |
 | AUX5 enable | 21 | Out | Replaces generic 3V3_SWITCHED control | `FROZEN`; pull-down default off |
@@ -32,7 +32,7 @@ This Task 4.6 allocation supersedes the preliminary Task 2 table. It is based on
 | Strap/test | 45 | — | SD DAT3 in reference; VDD_SPI strap | `RESERVED`; no removable-card load |
 | Strap pins | 0/3/46 | — | Boot/configuration straps | `RESERVED` except GPIO0 PROG |
 
-TCA6408A-Q1 P0…P7 are GNSS_EN, SD_EN, DISP3_EN, DISP5_EN, SHIFT5_EN, SD_CD_N, proposed STATUS_DRV_EN and reserved. External pull-downs keep all rail enables off while the expander powers up as inputs. GPIO39–41 intentionally overlap external JTAG; native USB Serial/JTAG is primary, and GPIO42 remains a test pad.
+TCA6408A-Q1 P0…P7 are GNSS_EN, SD_EN, DISP3_EN, DISP5_EN, SHIFT5_EN, SD_CD_N, STATUS_DRV_EN and reserved. External pull-downs keep all rail enables off while the expander powers up as inputs. GPIO39–41 intentionally overlap external JTAG; native USB Serial/JTAG is primary, and GPIO42 remains a test pad.
 
 ## Proposed external connectors
 
@@ -42,10 +42,22 @@ OBD/display/shift connector mechanics remain provisional. Electrical pin contrac
 
 | OBD pin | Signal | Notes |
 |---:|---|---|
-| 16 | VBAT | Permanent vehicle supply into protection |
-| 4, 5 | GND | Define chassis/signal-ground strategy and wire allocation |
+| 16 | `VBAT_OBD_RAW` | Permanent vehicle supply into fuse/TVS/reverse-OV protection |
+| 4, 5 | `POWER_GND` | Separate rated harness conductors; one connector-entry join into the continuous plane |
 | 6 | CAN-H | Short branch; protection close to entry |
 | 14 | CAN-L | Route as pair with CAN-H |
+
+### External-interface protection class
+
+| Interface | Class | Protection boundary |
+|---|---|---|
+| OBD battery / CAN | `CABLE_EXTERNAL` | Main fuse/TVS/disconnect and ESDCAN04 at entry; termination/choke DNP defaults |
+| USB-C | `CABLE_EXTERNAL` | USBLC6-2SC6Y at receptacle, current limiting/reverse isolation, tunable shell network |
+| GNSS U.FL | `CABLE_EXTERNAL` | AQ3118E-01ETG at center contact, protected bias-T, immediate RF-ground return |
+| Display | `CABLE_EXTERNAL` | Current-limited switched rails and provisional connector ESD after pinout freeze |
+| Shift light | `CABLE_EXTERNAL` | TPS1H100-Q1, AHCT buffer/series resistor and provisional two-line ESD |
+| MODE | `ENCLOSURE_INTERNAL` | Non-conductive actuator; reclassify if touchable metal is introduced |
+| BOOT / RESET | `ENCLOSURE_INTERNAL` | Recessed service access; protection must not alter GPIO0/EN timing |
 
 ### DISPLAY
 
@@ -73,7 +85,7 @@ Expose GND, switched/current-limited 5 V up to 1 A, and buffered 5 V logic data 
 
 ### Sounder
 
-No external sounder connector is frozen. The proposed onboard TPA2005D1-Q1 drives a differential 8 Ω speaker; neither speaker terminal is ground. GPIO17 remains the sound waveform/control source through the required input conditioning. Exact speaker and acoustic geometry remain provisional.
+No external sounder connector is frozen. The approved-direction onboard TPA2005D1TDGNRQ1 drives a differential 8 Ω speaker; neither speaker terminal is ground. GPIO17 remains the sound waveform/control source through the required input conditioning. Exact speaker and acoustic geometry remain provisional.
 
 Expose GND and driven output, plus a defined supply if required. Connector must not invite connection of an inductive load without the required clamp.
 
@@ -102,7 +114,7 @@ The schematic symbol establishes connectivity, but physical header pin-one orien
 - Keep all device CS lines inactive through reset. GPIO45 is reserved; microSD CS is GPIO11.
 - Avoid using GPIO19/20 for anything except USB.
 - MODE must not use the existing PROG/GPIO0 button because a held button changes boot behavior.
-- CAN-H/L test points must be compact and not create long stubs.
+- CAN-H/L test points must be compact and not create long stubs. OBD4/5, USB, CAN, GNSS, SD, display, shift and audio share one DC ground plane; manage returns by placement, not split nets.
 - UART naming on connectors should include endpoint perspective (`ESP_RX/M9N_TX`, `ESP_TX/M9N_RX`).
 
 ## Internal product contracts

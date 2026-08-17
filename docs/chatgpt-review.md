@@ -1,124 +1,128 @@
-# Telemetry v1 Task 4.6 review
+# ChatGPT engineering review packet
 
 ## Task completed
 
-Completed the documentation-only User I/O, Configuration, Tire Module Provision and Test-Reference Freeze. Researched primary manufacturer material and relevant open-source projects; froze the ten-pixel shift-light contract, MODE behavior, centralized configuration/recovery model, OTA/profile-update principles, future tire-data boundary and layered test strategy. Two hardware changes are explicitly proposals pending review. No schematic, PCB, firmware, CAD, manufacturing file or third-party code was created or modified.
+Completed Task 4.7 — Automotive Electrical Environment and Input Protection Freeze. Defined the 12 V passenger-car electrical envelope, selected the suppressed-load-dump design boundary, froze the vehicle input/reverse/OV/TVS/fuse/filter/ground/source-OR architecture, revalidated CAN/GNSS/USB/external-interface protection, recalculated parked current and thermal screening, froze schematic net names/test points, and created the future prototype validation plan. No KiCad, PCB, firmware, CAD, or manufacturing file was created or modified, and Task 5 was not started.
 
 ## Files changed
 
-- `CODEX.md`: added the permanent research, licensing and reuse-classification rule.
-- `docs/user-io-configuration.md`: created the detailed User I/O, configuration, OTA, profile, tire and dual-CAN decision record.
-- `docs/test-reference-architecture.md`: created the reference-project audit and host/replay/emulator/HIL strategy.
-- `docs/requirements.md`: added Task 4.6 requirements and updated output envelopes.
-- `docs/architecture.md`: integrated the configuration, update, tire-module and second-CAN boundaries.
-- `docs/hardware-spec.md`: recorded the output contracts and proposed sound/status changes.
-- `docs/interfaces.md`: updated the shift/sound/status interface contracts.
-- `docs/power-budget.md`: replaced the informal LED estimate and recalculated AUX5.
-- `docs/power.md`: reconciled the rail summary and input-power calculation.
-- `docs/power-wake-review.md`: reconciled the output comparison and remaining selection gates.
-- `docs/telemetry-data-model.md`: reserved future normalized tire concepts.
-- `docs/device-protocol-architecture.md`: defined shared configuration, OTA and profile-update ownership.
-- `docs/open-source-dependencies.md`: added project/license/classification findings.
-- `docs/enclosure-architecture.md`: added removable shift-light and sound/status mechanical constraints.
-- `docs/test-architecture.md`: added deterministic emulator and update/configuration gates.
-- `docs/component-freeze.md`: recorded proposed components and corrected input-power calculations.
-- `docs/schematic-architecture.md`: updated controlled pre-schematic requirements only; no schematic was created.
-- `docs/telemetry-v1-change-list.md`: reconciled the Task 4.6 output changes/proposals.
-- `docs/chatgpt-review.md`: replaced the Task 4.5 packet with this Task 4.6 review.
+- Created `docs/automotive-electrical-profile.md`.
+- Created `docs/input-protection-architecture.md`.
+- Updated `docs/component-freeze.md`.
+- Updated `docs/power-budget.md`.
+- Updated `docs/power-wake-review.md`.
+- Updated `docs/power.md`.
+- Updated `docs/schematic-architecture.md`.
+- Updated `docs/requirements.md`.
+- Updated `docs/hardware-spec.md`.
+- Updated `docs/interfaces.md`.
+- Updated `docs/test-architecture.md`.
+- Updated `docs/telemetry-v1-change-list.md`.
+- Updated `docs/rejsacan-analysis.md`.
+- Updated `docs/user-io-configuration.md`.
+- Updated `docs/chatgpt-review.md`.
 
 ## Engineering findings
 
-### Frozen current-v1 decisions
-
-1. Prefer the Worldsemi WS2812 V6-class family for the shift light; freeze the family/function, but keep the exact ordering code `PROVISIONAL` until a controlled English data sheet, availability and flex-assembly evidence are captured.
-2. Exactly ten pixels are required. At 12 mA/color, all-white current is `10 × 3 × 12 mA + ≤0.010 mA = 360.010 mA`; 25% margin gives 450 mA, rounded to a 0.50 A qualified load. A representative one-color/50%-PWM pattern is 60.010 mA.
-3. Retain `CAHCT1G126-Q1` at 5 V, safe-disabled with the output rail, a 33 Ω starting series resistor (22–47 Ω measurement range), connector-side low-capacitance ESD and local 100 nF/pixel.
-4. Freeze the external contract as `SHIFT5`, `SHIFT_DATA_5V`, `GND`, cable ≤0.5 m, ≥26 AWG power/ground (24 AWG preferred), ≥28 AWG data, connector ≥1.5 A, qualified load 0.50 A and retained TPS1H100-Q1 1 A protection/fault envelope.
-5. AUX5 named load is `0.50 + 0.50 + 0.30 = 1.30 A`; with 25% margin it is 1.625 A, so the frozen 2 A converter remains sufficient on paper.
-6. MODE remains GPIO10, non-strap, button-to-ground with a 47 kΩ starting pull-up. Short press acknowledges/silences an active alarm or advances local indication; ≥3 s requests configuration only in a safe state. It never silently erases configuration or enables CAN transmission.
-7. RESET/EN and BOOT/GPIO0 remain distinct recessed service controls. BOOT retains its strap-only role.
-8. Alarm rule, alarm state and presentation remain separate. Thresholds, persistence/hysteresis, mute/acknowledgement and STREET/TRACK presentation are configuration, never global hard-coded constants.
-9. Configuration Manager is the only persistent-settings owner: schema-versioned validation/migration, immutable runtime snapshots, atomic stage/commit, last-known-good recovery, safe defaults, explicit factory reset and secret redaction.
-10. Web configuration is a physically requested, authenticated, 10-minute-inactivity SoftAP session with explicit local URL/mDNS; Wi-Fi is normally off and turns off on exit. A captive portal is not required. Normal CAN/GNSS/alarm work continues with bounded resources.
-11. OTA uses ESP-IDF HTTPS OTA, server-certificate validation, signed image/manifest, compatibility checks, inactive-slot programming, pending-image self-test and rollback. Anti-rollback eFuses wait for a qualified key/manufacturing/recovery process.
-12. Vehicle profiles may update independently only as declarative, non-executable, authenticated artifacts with schema/runtime compatibility, staging/dry-run, atomic activation, last-known-good rollback and built-in Generic OBD fallback. The package format remains open.
-
-### Future-module reservations
-
-13. Reserve a separate future AutoTelemetry Tire Module that produces four-wheel pressure, overall/internal temperature, left-to-right tread-temperature arrays and health; the main unit normalizes and forwards them to RaceChrono, logger, display and app.
-14. Telemetry v1 needs no current hardware change for Tire Module support. Evaluate BLE/ESP-NOW first; wired UART/RS-485/CAN remains a later module/system decision.
-15. A second CAN controller is not justified in Telemetry v1. ESP32-S3 has one TWAI instance and all present requirements use one vehicle bus.
-16. If two independent buses become necessary, prefer a separate tire/sensor gateway first. A later main-board redesign must explicitly compare ESP32-C6 dual TWAI against ESP32-S3 plus an external controller; C6 does not preserve the frozen S3 N16R8 resource architecture.
-
-### Open-source/reference findings
-
-17. Keep the following in project documentation: MagnusThome `ESP32_OBD2_Emulator` as unlicensed `REFERENCE_ONLY` basic smoke-test concept; `esp32_obd2` as MIT `REFERENCE_ONLY`/possible later dependency; `ESP32S3RET` as MIT development reference; the local C6 dual-CAN example and Autosport Labs ESP32-CAN-X2 as unclear-license `REFERENCE_ONLY`; `lbenthins/ecu-simulator` as the first MIT development-tool candidate; Ircama ELM327-emulator as non-commercial evaluation only; archived MPL-2.0 `limiter121` as reference only; `mdabrowski1990/uds` and SavvyCAN as possible MIT development tools. No code was copied.
-
-Magnus's simple emulator is suitable only for an initial physical-CAN OBD smoke test. Deterministic project-owned scenarios plus SocketCAN/replay, then a physical emulator and later HIL, are required for supported-PID, multi-ECU, malformed, timeout, ISO-TP and UDS qualification.
-
-RaceChrono publicly documents per-position tread names `Tyre temperature <position> 1…8` from left to right. No authoritative public canonical tire-pressure name was found; capture and verify it against the target app release before freezing an adapter mapping.
+- ISO 16750-2:2023 covers electrical loads and notes that harness/connection impedance changes stress; ISO 7637-2:2011 defines conducted supply-line transient methods and functional-performance classification; ISO 10605:2023 covers module/vehicle ESD. CISPR 25:2021 is an emissions standard protecting onboard receivers, while UNECE R10 applicability/approval remains a product-market question. SAE J1962 explicitly does not cover long-term connector retention.
+- The v1 envelope is 6–18 V operation, +26 V for 60 s jump-start survival by disconnect, −14 V for 60 s reverse survival, and a +38 V suppressed-load-dump source condition survived by disconnect. `VEHICLE_PROTECTED` must measure ≤24 V. Severe unsuppressed load dump is not guaranteed.
+- TIDA-01167's public severe reference illustrates the excluded risk. At a hypothetical 101 V/0.5 Ω source clamped to 38.9 V, current is 124.2 A and instantaneous TVS power is 4.83 kW (`CALCULATED`); headline pulse power alone cannot establish 400 ms hot/repetitive survival.
+- `PROPOSED CHANGE`, approved for Task 5: use `LM74502QDDFRQ1` instead of `LM74502HQDDFRQ1`. TI supports external `Cdvdt` inrush control on the 60 µA non-H variant; both variants retain the 2 A gate sink used for turn-off.
+- Freeze `SM8SF24CA-Q`: bidirectional, AEC-Q101, 24 V VRWM, 26.7–29.5 V breakdown, 38.9 V maximum clamp at 180 A and 7 kW 10/1000 µs. Bidirectionality avoids forward-biasing the main clamp during sustained reverse battery. ST `LDP01-28AY` is rejected at this pre-controller position because it is unidirectional.
+- The +50 V/2 Ω public fast-positive reference gives a conservative 5.55 A source-current screening value at 38.9 V clamp; margins to the 65 V controller and 60 V MOSFET are 26.1 V and 21.1 V. These are calculations, not measured clamp results.
+- Freeze `0437002A` 2 A/63 V input fuse. The 12.458 W maximum named rail output at assumed 80% conversion requires 1.298 A from 12 V, leaving 54.1% arithmetic current margin to 2 A. Inrush/time-current/hot coordination remains open.
+- Freeze post-switch damped C-L-C topology with 100 V raw ceramics, 50 V post-switch capacitance, a 2.2–4.7 µH/≥3 A/≥4 A-saturation inductor envelope and an R-C damping option. Exact parts require impedance/stability/inrush calculation.
+- Select controlled reset/automatic recovery for crank. Ideal 100 ms hold-up from 12 V to 4.5 V needs about 667 µF even for 0.33 W and 8,081 µF for 4 W at assumed 80% efficiency; full ride-through is not justified.
+- OBD4 and OBD5 join once at connector entry into one continuous `POWER_GND`; return paths are controlled by placement, not split ground nets. USB ground is common; speaker output is BTL.
+- LM74502 does not reverse-block while enabled. Therefore its tolerance-bounded UVLO must open above the highest USB-derived `SYS_IN` crossover, and reverse current during slow/fast OBD sag is a prototype acceptance test.
+- CAN remains `TCAN3404DRQ1` plus `ESDCAN04-2BWY`, ACT45B-510 footprint DNP/0 Ω bypass default, and split 120 Ω DNP/OFF default. No CAN component or termination change was required.
+- `PROPOSED CHANGE`, approved for Task 5: replace NRND GNSS protector `ESDAXLC6-1BT2Y` with active `AQ3118E-01ETG` (AEC-Q101/PPAP, bidirectional 18 V, 0.3 pF typical). The prior 22 Ω antenna-short limiter is reopened because the calculation did not prove VCC_RF/module/antenna hot-short safety.
+- Approve `TPA2005D1TDGNRQ1` direction and `LP5814DRLR` architecture. Speaker and RGB LED remain provisional. LP5814 is not AEC-qualified and requires board-level qualification.
+- Revised parked-current subtotal is 211.54 µA; with a 100% allowance the envelope is 423.08 µA = 0.424 mA at 12 V. This passes <1.0 mA by 0.576 mA and the <0.50 mA room target by 0.076 mA on paper, not by measurement.
+- Thermal screening at 85 °C ambient and assumed 50 °C/W gives about 123.2 °C MAIN_3V3 junction at its envelope and 140.4 °C AUX5 junction at its envelope. AUX5 has only 9.6 °C to the 150 °C limit and is the principal pre-schematic thermal risk.
 
 ## Decisions made
 
-- The 17 numbered recommendations above are the Task 4.6 decisions.
-- The shift-light exact load is frozen without changing its already frozen protection silicon or GPIO.
-- The existing 2 A AUX5 silicon remains frozen after recalculation.
-- No Tire Module electronics, additional main-board reservation, second CAN controller or MCU change is approved.
-- Open-source projects remain references/tools unless a later dependency review explicitly changes classification.
+- Limit v1 to a defined suppressed-load-dump passenger-car environment; explicitly exclude guaranteed severe unsuppressed load dump.
+- Require disconnect and automatic recovery during jump/OV/load dump rather than uninterrupted operation.
+- Use controlled reset below UVLO instead of full crank ride-through.
+- Retain back-to-back N-MOSFET reverse/OV disconnect, but use the inrush-controllable LM74502 variant.
+- Freeze a bidirectional Bourns main TVS, fixed 2 A fuse and damped post-switch filter topology.
+- Freeze 6.0 V nominal UV falling, about 6.58 V typical reconnect, 18.0 V nominal OV and ≤20 V worst-case steady cutoff as Task 5 tolerance targets; require ≤24 V downstream during approved transients.
+- Join OBD4/5 at one entry region into a continuous ground plane.
+- Preserve USB TPS2553 plus PMEG source isolation and add a measured UVLO/source-crossover requirement.
+- Preserve CAN TVS/CMC/termination defaults.
+- Approve active Littelfuse GNSS RF ESD, TPA2005D1TDGNRQ1 direction and LP5814 architecture.
+- Freeze Task 5 net names, hierarchical block contracts and first-prototype test points in `docs/schematic-architecture.md`.
 
 ## Assumptions
 
-- The proposed 1 W sound calculation assumes 75% end-to-end amplifier efficiency; `1 W/(5 V×0.75)+2.8 mA = 269.5 mA`, rounded to 300 mA.
-- Cable-drop screening uses Belden 1213A 26 AWG at 0.146 Ω/m, a 0.5 m one-way run, 25% resistance allowance and 50 mV contacts: approximately 0.141 V at 0.5 A.
-- The realistic shift pattern uses one color channel at 50% PWM on all ten pixels; actual patterns are configuration-dependent.
+- Engine-off nominal reference is 12.6 V; expected engine-off and smart-charging bands are design targets, not universal vehicle guarantees.
+- Rail-envelope input-current arithmetic uses 80% combined conversion efficiency.
+- Parked rail-load conversion uses 60% low-load efficiency and 5 µA PMEG reverse leakage at approximately 10–12 V/25 °C.
+- Hot MOSFET screening uses 1.7 times the 8.5 mΩ/part 25 °C RDS(on) maximum.
+- Thermal screening uses 85 °C ambient, 50 °C/W effective buck thermal resistance, 85% MAIN efficiency and 88% AUX5 efficiency.
+- Hold-up screening uses 80% conversion efficiency and constant power.
+- Public TIDA reference-design test conditions are treated as `STANDARD_REFERENCE`, not copied ISO requirements or guaranteed field events.
 
 ## Uncertainties / unresolved questions
 
-- Exact Worldsemi V6-class pixel/order code and controlled data sheet; exact shift connector, ESD part, flex stack-up, diffuser and adhesive.
-- Exact 8 Ω speaker, acoustic opening/back volume, ingress treatment and measured in-cabin STREET/TRACK acceptance.
-- Exact common-anode RGB LED, optical path and the acceptability of a non-AEC LP5814 in this product environment.
-- Full configuration ownership/threat model, credential lifecycle, serialization, firmware/profile manifest formats and signing-key operations.
-- RaceChrono tire-pressure naming and tread overlay behavior in the target application release.
-- Tire-module transport and any future justification for two independent CAN buses.
-- Project-owned emulator scenario format, fixture redistribution permissions and HIL equipment.
+- Purchased-standard/OEM pulse severities, repetition counts, source networks, acceptance classes and applicable regulatory route.
+- Exact LM74502 UV/OV divider values/tolerances, `Cdvdt` inrush network, fuse time-current behavior and MOSFET SOA.
+- Exact filter inductor/capacitors/damping, effective capacitance, impedance interaction, CISPR population and transient ringing.
+- Physical TVS clamp/energy/temperature behavior and proof that `VEHICLE_PROTECTED` remains ≤24 V.
+- Maximum hot PMEG reverse leakage, guaranteed buck maximum IQ, and complete assembled-board parked current.
+- Actual regulator/inductor loss, PCB copper/thermal-via result and allowed simultaneous AUX5 load policy.
+- Exact active GNSS antenna and passive/active short-current limiter; RF insertion loss/C/N0 with AQ3118E-01ETG.
+- Exact display/shift connector ESD parts, connector families, cable construction and USB-shell population.
+- Exact speaker/acoustics and RGB LED/optics.
+- ESD, transient, EMC, RF, thermal and vehicle test results; no compliance result exists.
 
 ## Risks
 
-- Addressable-pixel variants share family names but differ in thresholds, current, temperature and quiescent behavior; a substitute is not qualified by name alone.
-- A 1 A protection setting does not qualify a strip above the 0.50 A load contract; software brightness limiting is not a substitute for hardware qualification.
-- Maximum sound pressure depends strongly on the chosen speaker and enclosure. No motorsport audibility claim exists until measured in representative cabins.
-- SoftAP, OTA and remotely writable profiles enlarge the attack surface and can affect RF/power scheduling; implementation needs explicit security and resource gates.
-- Unlicensed or non-commercial reference code cannot be incorporated merely because it is technically useful.
-- RaceChrono channel names are compatibility behavior, not the canonical internal data model.
+- A vehicle with a severe unsuppressed charging-system load dump is outside the v1 guarantee and can exceed the selected energy envelope.
+- AUX5 simultaneous maximum load may approach the regulator junction limit in a hot enclosure.
+- PMEG Schottky leakage can consume the small <0.50 mA parked-current stretch margin at high temperature.
+- Source-crossover tolerance or turn-off delay could briefly backfeed a sagging OBD source while USB is present.
+- An undamped or incorrectly populated input filter can ring or destabilize the bucks.
+- LP5814, ESP32-S3-WROOM and NEO-M9N are not automotive-qualified even though surrounding protection parts may be.
+- GNSS antenna protection/short limiting can degrade sensitivity or damage the supply if the final antenna and layout are not jointly validated.
 
 ## GPIO / peripheral changes
 
-No MCU GPIO number changes are proposed. GPIO6 remains shift data, GPIO10 MODE, GPIO17 sound waveform/control, GPIO0 BOOT and EN RESET. `PROPOSED CHANGE`: TCA6408A P6 changes from direct `STATUS_LED_N` to `STATUS_DRV_EN`; LP5814 joins the existing I²C bus and drives one common-anode RGB LED. P7 remains reserved.
+| Resource | Task 4.6 assignment | Task 4.7 result |
+|---|---|---|
+| ESP32 GPIOs | Frozen map, including GPIO10 MODE, GPIO17 sound, GPIO0 BOOT and EN RESET | No GPIO-number change |
+| TCA6408A P6 | `STATUS_DRV_EN` proposed | Same function, now approved with LP5814 architecture |
+| Sound peripheral | TPA2005D1-Q1 proposed on GPIO17 | Exact TPA2005D1TDGNRQ1 direction approved; GPIO unchanged |
+| GNSS RF ESD | ESDAXLC6-1BT2Y | AQ3118E-01ETG proposed change approved; no MCU peripheral change |
 
 ## Power / CAN / RF impact
 
-The shift-light is a 0.50 A qualified load with a separate retained 1 A protected fault envelope. The proposed speaker amplifier uses a 300 mA AUX5 branch. The recalculated 1.625 A AUX5 requirement remains below the frozen 2 A rating. The simultaneous named-rail input calculation becomes 12.458 W, 1.298 A at 12 V and 80% assumed efficiency, leaving 54.1% arithmetic margin to the 2 A fuse before inrush/time-current/thermal qualification.
-
-There is no change to the one-channel Classical CAN architecture, transceiver, termination default, ESP32-S3, GNSS RF path, BLE/Wi-Fi antenna or USB isolation. Configuration-mode Wi-Fi coexistence and RF/power load must be measured later.
-
-## Proposed hardware changes
-
-- `PROPOSED CHANGE`: replace the frozen `2N7002KQ-7` buzzer MOSFET/`BAS21WQ` clamp concept with `TPA2005D1-Q1`, retaining GPIO17, and use a provisional onboard 8 Ω, ≥1 W speaker. Reason: programmable tone/volume and materially stronger acoustic potential with protected BTL drive.
-- `PROPOSED CHANGE`: add `LP5814DRLR` on MAIN_3V3 and repurpose expander P6 to `STATUS_DRV_EN` for one provisional common-anode RGB LED. Reason: independent current/PWM control without consuming three MCU GPIOs.
-- Neither proposal is approved for schematic capture by this document.
+- Automotive power: major requirement/protection freeze. Main TVS and controller variant change; operating/OV/UV/load-dump/crank/ground/filter/source-crossover contracts are now explicit. The parked estimate rises from 0.371 to 0.424 mA.
+- CAN: no transceiver, GPIO, termination or default population change. ESDCAN04 stays fitted, CMC and termination stay DNP. Ground/ESD placement and future validation are more explicit.
+- GNSS/RF: main module/topology unchanged; RF ESD changes to AQ3118E-01ETG and antenna-short limiter returns to provisional. No RF routing was performed.
+- USB: TPS2553/PMEG/USBLC6 architecture unchanged; UVLO coordination and the simultaneous-source sag test are new requirements.
+- ESP32 boot/strapping: no allocation change. MODE remains GPIO10; BOOT GPIO0 and RESET EN remain internal/recessed and must not receive protection that alters timing/leakage.
 
 ## Datasheets / primary sources consulted
 
-- Worldsemi WS2812 family page and WS2812B-2020 v1.3 data sheet; OPSCO/DigiKey SK6812MINI-E data; Brightek official 2020 ICLED product pages.
-- TI `CAHCT1G126-Q1`, `TPS1H100-Q1`, `TPA2005D1-Q1` and `LP5814` product data; PUI AS01808AO reference speaker data; Belden 1213A cable data.
-- Espressif ESP-IDF ESP32-S3 TWAI, HTTPS OTA, OTA, Secure Boot v2 and Wi-Fi security documentation; ESP32-C6 data sheet.
-- RaceChrono official DIY-device tutorial and maintainer tire-channel guidance.
-- Exact upstream repository pages and license files recorded in `open-source-dependencies.md` and `test-reference-architecture.md`.
+- ISO 16750-2:2023, ISO 7637-2:2011 and ISO 10605:2023 official scope pages.
+- IEC CISPR 25:2021 official scope; UNECE UN Regulation No. 10 official index; SAE J1962 official scope.
+- TI LM74502-Q1/LM74502H-Q1, LMQ66420-Q1, TCAN3404-Q1, TPS22919-Q1, TPS2553-Q1, TPS1H100-Q1, TCA6408A-Q1, TPA2005D1-Q1 and LP5814 data sheets/product data.
+- TI TIDA-00699 suppressed-load-dump/cold-crank reference and TIDA-01167 unsuppressed-load-dump reference.
+- Analog Devices automotive low-IQ surge-stopper application article.
+- Bourns SM8SF-Q, Vishay SM8S and ST LDP01-28AY TVS data sheets.
+- Diodes Incorporated DMT6007LFGQ and Littelfuse 437A/0437002A data.
+- Nexperia PMEG6030EP-Q and CAHCT1G126-Q1 manufacturer data.
+- ST ESDCAN04-2BWY/USBLC6-2SC6Y and Littelfuse AQ3118E-01ETG data.
+- u-blox NEO-M9N data sheet and Integration Manual R10.
+- Repository RejsaCAN v3.4 schematic/BOM evidence as `REFERENCE_ONLY`; its legacy protection circuit was not copied as a validated solution.
 
 ## Recommended next step
 
-Conduct one formal Task 4.6 architecture review and explicitly approve or reject the two proposed sound/status hardware changes before authorizing schematic capture.
+Begin Task 5 with the vehicle-input and main-power schematic sheets, completing the explicitly frozen UV/OV-tolerance, `Cdvdt`-inrush, fuse/SOA and damped-filter calculations before capturing their exact passive values.
 
 ## STOP condition
 
-Task 4.6 is complete. Stop here and wait for review; do not begin schematic/PCB work, firmware, Web UI, OTA, Tire Module electronics, flex layout, enclosure CAD or manufacturing output.
+Task 4.7 is complete. Stop before Task 5 schematic capture, PCB work, firmware implementation, CAD, manufacturing generation, procurement, or electrical testing.

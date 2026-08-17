@@ -1,6 +1,6 @@
 # Telemetry v1 frozen hardware specification
 
-This is the Task 4.6 component and interface research freeze, not an approved schematic, PCB release, or automotive-safety claim. Exact ordering codes, qualification, exceptions, and source evidence are in [`component-freeze.md`](component-freeze.md); circuit boundaries are in [`schematic-architecture.md`](schematic-architecture.md).
+This is the Task 4.7 automotive-electrical, component and interface research freeze, not an approved schematic, PCB release, or automotive-safety claim. Exact ordering codes, qualification, exceptions, and source evidence are in [`component-freeze.md`](component-freeze.md); circuit boundaries are in [`schematic-architecture.md`](schematic-architecture.md).
 
 Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CAN channel, protected power and parked wake/sleep, ESP32-S3, onboard GNSS, microSD, USB-C, BLE, an interchangeable external display, a short-cable shift light, onboard audible alarm, MODE input, status indication, and debug. TPMS, tire-temperature sensing, IMUs, analog sensor hubs, external sensor networks, and a second CAN channel are explicitly outside this revision.
 
@@ -19,8 +19,8 @@ Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CA
 ## GNSS
 
 - Freeze NEO-M9N-00B on switched ≥200 mA GNSS_3V3, UART at 230,400 bit/s, target 20–25 Hz. It is professional-grade, not automotive-qualified; this is an accepted prototype risk, not a qualification claim.
-- Freeze Hirose U.FL-R-SMT-1(10) for the prototype and ESDAXLC6-1BT2Y at the connector; use a controlled 50 Ω RF path.
-- Freeze the u-blox R10 bias-T topology with 100 nF supply bypass/filter and 27 nH choke meeting >500 Ω at GNSS frequencies and >300 mA. Use a 22 Ω, ≥0.5 W series limiter (`CALCULATED`: 3.3 V / (22 Ω + assumed 2.2 Ω other series resistance) = 136 mA short current and about 0.41 W resistor dissipation). The final active antenna remains a schematic-release blocker and must draw 5–20 mA from 2.7–3.3 V.
+- Freeze Hirose U.FL-R-SMT-1(10) for the prototype and active Littelfuse AQ3118E-01ETG at the connector; use a controlled 50 Ω RF path. The earlier ST ESDAXLC6-1BT2Y is NRND.
+- Freeze the u-blox R10 bias-T topology with 100 nF supply filtering and a 27 nH choke meeting the published RF impedance/current guidance. Reopen the earlier 22 Ω/136 mA limiter: Task 5 must select a passive or active current limiter against VCC_RF/module impedance and the exact 5–20 mA antenna. The antenna remains a schematic-release blocker.
 - Provide GNSS TX/RX and power test points away from the RF trace.
 - Tie V_BCKP to switched GNSS power for v1 and investigate u-blox host save/restore (`DESIGN_REQUIREMENT`); provide isolation/DNP flexibility only if schematic review finds it low risk.
 
@@ -34,11 +34,19 @@ Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CA
 ## Outputs
 
 - Freeze a ten-pixel, ≤0.5 m removable shift-light contract. Qualify the WS2812-compatible load to 0.50 A while retaining the existing 1 A TPS1H100-Q1 protected fault envelope, CAHCT1G126-Q1 5 V data buffer, connector-side ESD and ≥1.5 A connector rating.
-- Propose replacing the low-side buzzer MOSFET with TPA2005D1-Q1 driving one onboard 8 Ω, ≥1 W speaker from a 300 mA AUX5 branch. Exact speaker, acoustic port and enclosure volume remain provisional.
-- Propose LP5814DRLR on MAIN_3V3 for one common-anode RGB status LED. It shares I2C; expander P6 becomes `STATUS_DRV_EN`. Exact LED and optical implementation remain provisional.
+- Approve TPA2005D1TDGNRQ1, the −40…+105 °C order code, replacing the low-side buzzer MOSFET and driving one onboard 8 Ω, ≥1 W speaker from a 300 mA AUX5 branch. Exact speaker, acoustic port and enclosure volume remain provisional.
+- Approve LP5814DRLR on MAIN_3V3 for one common-anode RGB status LED. It shares I2C; expander P6 becomes `STATUS_DRV_EN`. Exact LED and optical implementation remain provisional.
 - MODE remains GPIO10, button-to-ground, 47 kΩ starting pull-up, separate from RESET and BOOT. User-visible behavior and safe configuration entry are controlled by [`user-io-configuration.md`](user-io-configuration.md).
 
 - Neither the external shift load nor the onboard sounder is powered directly by an ESP32 GPIO. Longer/noisier shift installations require a different intelligent or differential module and are outside v1.
+
+## Automotive input and ground
+
+- Freeze `VBAT_OBD_RAW -> 0437002A -> SM8SF24CA-Q -> LM74502QDDFRQ1 + 2×DMT6007LFGQ-7 -> damped post-switch filter -> VEHICLE_PROTECTED`. The non-H controller is a documented change for calculable inrush control.
+- Freeze 6.0 V nominal UV falling, 18.0 V nominal OV and a measured ≤24 V `VEHICLE_PROTECTED` requirement. Full operation is 6–18 V; +26 V/60 s jump and +38 V suppressed load dump survive by disconnect; −14 V/60 s reverse survives without normal fuse opening. Severe unsuppressed load dump is outside the v1 guarantee.
+- Freeze controlled reset/automatic recovery during crank; full ride-through is not required.
+- OBD4 and OBD5 join once at entry into one continuous `POWER_GND`; high-current/ESD return geometry is controlled without split ground planes.
+- Freeze post-switch damped C-L-C topology and voltage/current envelopes; exact L/C/R, UV/OV, `Cdvdt`, fuse/SOA and EMI values remain Task 5 calculations.
 
 ## Expansion and debug
 
@@ -51,7 +59,7 @@ Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CA
 
 - RejsaCAN v3.4 reference outline is approximately 31.50 mm × 49.53 mm (`CALCULATED` from repository PCB edge coordinates) with an antenna-end notch; Telemetry v1 dimensions remain `TBD` and will grow for GNSS/RF and connectors.
 - RF connector/antenna cable, OBD strain relief, display cable, enclosure, ventilation, ingress, vibration, and service access are TBD.
-- Connector mechanics, enclosure temperature, transient pulse profile, ESD, EMC, and product qualification targets remain schematic-release blockers; they do not invalidate the bounded silicon freeze documented here.
+- Connector mechanics, enclosure temperature, exact purchased-standard/OEM test severities, ESD/EMC setup, and product qualification targets remain validation blockers; the Task 4.7 design envelope itself is frozen.
 
 ## Product-interface implications
 

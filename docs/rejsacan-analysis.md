@@ -123,10 +123,10 @@ UART signals can be routed through the ESP32-S3 GPIO matrix. v3.4 explicitly exp
 | 20–25 Hz GNSS | UART throughput depends on enabled messages/baud; RF performance depends on antenna/layout/noise | Use UBX configuration with calculated throughput; follow official integration manual and validate coexistence |
 | External SPI display | Shares 39/40/41 with SD; needs CS/DC/reset/backlight and potentially substantial power/current | Separate CS (47), DC (48), reset (12), backlight driver (7); serialize SPI and validate cable integrity |
 | Shift light | Reference 3V3_SWITCHED is a load-switch output, not a universal automotive external driver; combined load budget unknown | GPIO6 into dedicated protected driver sized after module specification |
-| Buzzer | No existing buzzer circuit; direct GPIO unsuitable for unspecified load | Resolved for v1: GPIO17 through 2N7002KQ onboard driver; GPIO42 remains JTAG MTMS |
+| Buzzer | No existing buzzer circuit; direct GPIO unsuitable for unspecified load | Resolved for v1: GPIO17 drives the TPA2005D1TDGNRQ1 input network; GPIO42 remains JTAG MTMS |
 | MODE button | GPIO0 is already PROG strap and unsuitable for normal mode key | Reclaim GPIO10 from blue LED in derivative; keep boot strap untouched |
 | microSD | GPIO45 CS is a strap pin; display sharing adds bus/cable load | Resolved for v1: SD CS moves to GPIO11; GPIO45 stays unloaded |
-| Low power | Reference has CAN wake only while main rail is retained; full hardware-off is voltage/USB wake only | Resolved for v1 architecture: hybrid rail-on ESP32/TCAN standby with switched peripherals; calculated parked envelope ≤0.371 mA at 12 V |
+| Low power | Reference has CAN wake only while main rail is retained; full hardware-off is voltage/USB wake only | Resolved for v1 architecture: hybrid rail-on ESP32/TCAN standby with switched peripherals; calculated parked envelope ≤0.424 mA at 12 V |
 | Peak power | U4 is 600 mA class and U5 is undocumented here; new loads exceed its class | Resolved silicon/rating: LMQ66420MC3RXBRQ1; calculated 1.050 A peak and 1.313 A after margin require ≥2.0 A MAIN_3V3; passives/thermal remain open |
 | USB/JTAG | USB consumes 19/20; SPI overlaps JTAG 39–41 | Preserve USB; reserve GPIO42 MTMS test pad and treat external JTAG as optional |
 
@@ -138,23 +138,23 @@ The recommended table is maintained in [`interfaces.md`](interfaces.md). In comp
 - GNSS UART: 15/16.
 - Shared SD/display SPI: 39/40/41; SD CS 11; display CS/DC/reset 47/48/12; backlight 7.
 - I2C: 1/2.
-- Shift-light: 6 through driver; buzzer: 17 through driver.
+- Shift-light: 6 through driver; sound: 17 through TPA2005D1TDGNRQ1 input network.
 - MODE: 10; expander interrupt: 18; preserve UART0 43/44 and JTAG MTMS 42.
-- Power/monitor: 21, 17, 8, 9 remain assigned.
+- Power/monitor: 21, 5, 8, 9 remain assigned.
 
 ## Unresolved engineering questions
 
-1. Can the calculated ≤0.371 mA parked envelope and the <0.50 mA stretch limit be verified on the complete board over voltage/temperature and wake duty cycle?
+1. Can the calculated ≤0.424 mA parked envelope and the <0.50 mA stretch limit be verified on the complete board over voltage/temperature and wake duty cycle?
 2. What exact 12 V passenger-vehicle transient, EMC, ESD, temperature, vibration, and compliance standards/classes apply? 24 V support is not required.
 3. Can optional split 120 Ω DNP/OFF termination and a DNP choke be laid out without harmful stubs/parasitics?
 4. What are the exact display module voltage, peak/backlight current, cable length, connector, and MISO behavior?
-5. What are the shift-light and buzzer electrical loads, wiring lengths, grounding, and short/open/inductive fault cases?
+5. What are the shift-light electrical load/fault cases and the exact speaker, acoustic load, and maximum operating duty?
 6. Is NEO-M9N availability/lifecycle and qualification acceptable, and which active antenna is selected? V_BCKP is switched off in v1.
 7. Which GNSS messages fit the assumed 200-byte epoch at the selected 230,400 bit/s while running the verified up-to-25 Hz constellation configuration?
 8. Do the frozen LMQ66420 variants satisfy the final transient, thermal, stability and EMI calculations with the selected passives?
 9. Does the GPIO11 SD_CS implementation remain inactive and non-back-powering through every reset/power state?
 10. Are GPIO4/5 still needed for board revision identification in the derivative?
-11. Is external four-wire JTAG required concurrently with the display/buzzer allocation, or is USB-JTAG sufficient?
+11. Is external four-wire JTAG required concurrently with the display/sound allocation, or is USB-JTAG sufficient?
 12. What enclosure and OBD/display/GNSS cable geometry determines PCB outline and RF/EMC constraints?
 
 ## Authoritative documents required before schematic design

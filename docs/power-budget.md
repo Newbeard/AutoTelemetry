@@ -1,6 +1,6 @@
 # Telemetry v1 power budget
 
-Status: Task 4.6 research-freeze budget, 2026-08-17. It is not a released schematic or an automotive-compliance claim.
+Status: Task 4.7 electrical/protection-freeze budget, 2026-08-17. It is not a released schematic or an automotive-compliance claim.
 
 ## Evidence convention
 
@@ -24,7 +24,7 @@ Datasheet “typical” values are not guaranteed maxima. Unknown marketplace di
 | Representative 1.28-inch display module | switched 3.3 V or 5 V | Module/backlight not selected | Marketplace modules differ | 300 mA at 3.3 V **or** 500 mA at 5 V | `DESIGN_REQUIREMENT`: connector envelopes, including controller, backlight and cable loss. Only one supplied rail may be enabled/configured for a module. Replace after exact module selection. |
 | TCAN3404-Q1 | always-on 3.3 V | 7 mA recessive typical | 55 mA dominant maximum at 60 Ω; 130 mA current-limited bus-fault case; 17 µA standby maximum at 150 °C | 8.2 mA active max, 55 mA dominant peak, 17 µA parked | `VERIFIED_DATASHEET`: TI SLLSFQ6A Tables 7-1/7-2. The 130 mA fault current is a protection/thermal case, not an ordinary rail capacity load. |
 | External shift light | switched 5 V | 10 pixels, one color at 50% PWM: 60.010 mA | 10 × 3 colors × 12 mA + ≤0.010 mA quiescent = 360.010 mA | 0.50 A qualified load; separate 1 A protected fault envelope | `VERIFIED_DATASHEET`: WS2812B-2020 v1.3 specifies 12 mA/color and <0.6 mA quiescent; the preferred V6 family advertises 3.3–5.5 V and 12 mA/color, but its exact controlled ordering code remains provisional. `CALCULATED`: 0.36001 A × 1.25 = 0.450 A, rounded to 0.50 A. |
-| Proposed sound output | switched 5 V | Program dependent | 1 W into 8 Ω design output | 300 mA branch | `VERIFIED_DATASHEET`: TPA2005D1-Q1 operates at 2.5–5.5 V, is AEC-Q100, and delivers up to 1.4 W into 8 Ω at 5 V/10% THD. `ASSUMPTION`: 75% end-to-end efficiency. `CALCULATED`: 1 W/(5 V×0.75)+2.8 mA = 269.5 mA, rounded to 300 mA. |
+| Approved-direction sound output | switched 5 V | Program dependent | 1 W into 8 Ω design output | 300 mA branch | `VERIFIED_DATASHEET`: TPA2005D1-Q1 operates at 2.5–5.5 V, is AEC-Q100, and delivers up to 1.4 W into 8 Ω at 5 V/10% THD. `ASSUMPTION`: 75% end-to-end efficiency. `CALCULATED`: 1 W/(5 V×0.75)+2.8 mA = 269.5 mA, rounded to 300 mA. |
 | TPS22919-Q1 load switches ×4 | associated rail | 90 mΩ typical | 1.5 A device rating; 2 nA typical shutdown | ≤1 µA aggregate parked allocation | `VERIFIED_DATASHEET` device characteristics; `DESIGN_REQUIREMENT` allocation includes temperature/leakage margin. Reverse-current behavior and discharge population must be verified per branch. |
 | Miscellaneous PCB loads | 3.3 V | sensors, pull-ups and status circuits not selected | — | 20 mA active; 10 µA parked | `DESIGN_REQUIREMENT`; indicator LEDs must be off in sleep. |
 
@@ -81,32 +81,36 @@ All rows are `CALCULATED` plus `DESIGN_REQUIREMENT` unless otherwise stated. Loa
 
 ## Complete parked-current tree
 
-Recommended state: protected vehicle input present; main 3.3 V buck remains enabled; ESP32-S3 is in deep sleep; TCAN3404-Q1 is in standby; GNSS, SD, display, AUX5, shift-light, buzzer and all indicators are off. The table expresses current at the 12 V OBD input.
+Recommended state: protected vehicle input present; MAIN_3V3 remains enabled; ESP32-S3 is in deep sleep; TCAN3404-Q1 is in standby; GNSS, SD, display, AUX5, shift-light, sound and visible indicators are off. All contributions are referred to the 12 V OBD input. Rail-load conversions use 60% low-load efficiency (`ASSUMPTION`).
 
-| Always-powered item | Rail allocation | 12 V input contribution | Basis |
-|---|---:|---:|---|
-| LM74502H-Q1 reverse-controller supply current plus input protection leakage | — | 110 µA | `VERIFIED_DATASHEET`: controller maximum operating supply-current bound used conservatively; TVS/MOSFET/fuse leakage must fit inside this allocation over temperature |
-| Main buck own IQ | input | 5 µA | `DESIGN_REQUIREMENT`; LMQ66420-Q1 advertises 1.5 µA typical, but a guaranteed implementation maximum is not yet established |
-| Vehicle detector and gated divider | input | 15 µA | `DESIGN_REQUIREMENT`; continuous 120 kΩ + 33 kΩ reference divider would draw `12/153k = 78.4 µA` and is therefore not retained continuously |
-| TCAN3404-Q1 standby | 17 µA at 3.3 V | 7.8 µA | `VERIFIED_DATASHEET` 17 µA max; `ASSUMPTION` 60% low-load conversion; `CALCULATED`: `17µA×3.3/(12×0.60)` |
-| ESP32 module branch | 50 µA at 3.3 V | 22.9 µA | `DESIGN_REQUIREMENT` 50 µA; same 60% conversion calculation |
-| Wake/button/timer logic | 10 µA at 3.3 V | 4.6 µA | `DESIGN_REQUIREMENT`; button itself consumes zero except while pressed |
-| Disabled load switches and rail discharge paths | — | 5 µA | `DESIGN_REQUIREMENT`, total referred to input |
-| CAN-line and USB ESD / source-isolation leakage | — | 5 µA | `DESIGN_REQUIREMENT`; selected parts must prove it over temperature |
-| GNSS V_BCKP | off | 0 µA | Recommended no-always-on-backup choice |
-| LEDs, display, SD, AUX5, buzzer | off | 0 µA | `DESIGN_REQUIREMENT`; no always-on indicator |
-| Miscellaneous leakage allocation | — | 10 µA | `DESIGN_REQUIREMENT` |
-| **Subtotal** | | **185.3 µA** | `CALCULATED`; TCA6408A and residual logic leakage are included in the miscellaneous allocation pending a complete netlist |
-| **100% uncertainty/temperature allowance** | | **185.3 µA** | `DESIGN_REQUIREMENT` margin |
-| **Expected design envelope at 12 V** | | **≤370.6 µA (0.371 mA)** | `CALCULATED` |
+| Always-powered item | 12 V input contribution | Basis |
+|---|---:|---|
+| LM74502-Q1 reverse/OV controller | 110.0 µA | `VERIFIED_DATASHEET` maximum operating current |
+| SM8SF24CA-Q input TVS | 10.0 µA | `VERIFIED_DATASHEET` maximum at 24 V/25 °C, conservatively allocated at 12 V; hot leakage unverified |
+| MAIN buck own IQ | 5.0 µA | `DESIGN_REQUIREMENT`; LMQ66420-Q1 typical is 1.5 µA, guaranteed implementation maximum unresolved |
+| UV/OV dividers, vehicle detector and gated ADC sensing | 25.0 µA | `DESIGN_REQUIREMENT` combined at 12 V |
+| TCAN3404-Q1 standby | 7.8 µA | `17 µA×3.3/(12×0.60)` (`CALCULATED`) |
+| ESP32 module branch | 22.9 µA | `50 µA×3.3/(12×0.60)` (`DESIGN_REQUIREMENT` + `CALCULATED`) |
+| TCA6408A-Q1 standby | 4.6 µA | `10 µA×3.3/(12×0.60)` using data-sheet maximum (`CALCULATED`) |
+| LP5814 shutdown | 0.14 µA | `0.3 µA×3.3/(12×0.60)` using data-sheet maximum (`CALCULATED`) |
+| Wake/button/timer logic | 4.6 µA | Existing 10 µA rail allocation converted to input |
+| Disabled TPS22919 branches | 1.5 µA | `DESIGN_REQUIREMENT` total including leakage/temperature |
+| USB PMEG/source-isolation path | 5.0 µA | `ASSUMPTION`; PMEG6030EP-Q is 5 µA typical at 10 V/25 °C and must be measured hot |
+| CAN/USB/other signal ESD leakage | 5.0 µA | `DESIGN_REQUIREMENT` |
+| Miscellaneous leakage | 10.0 µA | `DESIGN_REQUIREMENT` |
+| GNSS V_BCKP, SD, display, AUX5, SHIFT5, sound, visible LEDs | 0 µA intended load | Off; residual switch leakage is included above |
+| **Subtotal** | **211.54 µA** | `CALCULATED` |
+| **100% uncertainty/temperature allowance** | **211.54 µA** | `DESIGN_REQUIREMENT` margin |
+| **Expected design envelope at 12 V** | **≤423.08 µA (0.424 mA)** | `CALCULATED` |
 
-The 60% low-load efficiency is an `ASSUMPTION`, deliberately below the selected regulator's headline light-load efficiency; bench characterization must replace it. At 0.371 mA, the calculation has 0.629 mA margin to the 1 mA requirement and 0.129 mA to the 0.5 mA stretch target. Accordingly:
+The new value is 0.053 mA above the Task 4.6 estimate of 0.371 mA (`CALCULATED`, rounded). Against the allocations:
 
-- `<1 mA average parked` is realistically achievable (`DESIGN_REQUIREMENT`) with substantial tolerance.
-- `<0.5 mA average parked` is also realistically achievable at 12 V/room temperature (`DESIGN_REQUIREMENT`), but is not accepted until complete-board measurement over voltage and temperature.
-- Release limits: <0.50 mA typical at 12 V and 25 °C; <1.00 mA over the specified parked voltage/temperature range (`DESIGN_REQUIREMENT`). Wake retries, periodic timer work and post-drive shutdown time must be included in the eventual time-average measurement.
+- `<1.0 mA` over the parked voltage/temperature range: **PASS on paper**, 0.576 mA margin; not verified;
+- `<0.50 mA` at 12 V/25 °C: **PASS on paper**, 0.076 mA margin; not verified.
 
-For scale only, a continuous 1 mA draws `24 mAh/day` and `0.72 Ah/30 days`; 0.371 mA draws `0.267 Ah/30 days` (`CALCULATED`, ignoring battery self-discharge and temperature). This is not a claim of safe storage duration for any vehicle battery.
+The stretch margin is small. The PMEG Schottky leakage rises strongly with temperature, while the buck maximum IQ, ESP module/PSRAM sleep current, divider network and complete board leakage remain unresolved. Complete-board measurement over voltage, temperature, wake duty cycle and post-drive shutdown time is the release evidence.
+
+For scale only, 0.424 mA draws `0.424 mA×24 h×30 = 0.305 Ah` in 30 days (`CALCULATED`), ignoring battery self-discharge, temperature and vehicle effects. This is not a safe-storage-duration claim.
 
 ## Architecture comparison
 
@@ -122,7 +126,7 @@ For scale only, a continuous 1 mA draws `24 mAh/day` and `0.72 Ah/30 days`; 0.37
 | Sleep/startup | ESP/CAN rail-on possible | More sequencing and back-power paths | Explicit ESP/CAN wake domain, staged peripheral startup and current limiting |
 | Manufacturability | Simple | More converters/capacitors | More nets/test points, but clearer validation and configuration |
 
-**Recommendation:** Architecture C, implemented as a hybrid rail-on system: protected battery/USB source OR → low-IQ 2 A automotive 3.3 V buck for ESP32/CAN, individually switched GNSS/SD/display branches, and a separately switched 2 A 5 V auxiliary converter for external display/shift-light/buzzer needs. This preserves reliable CAN/timer/button wake without a second wake MCU and still meets the parked-current targets on paper.
+**Recommendation:** Architecture C, implemented as a hybrid rail-on system: protected battery/USB source OR → low-IQ 2 A automotive 3.3 V buck for ESP32/CAN, individually switched GNSS/SD/display branches, and a separately switched 2 A 5 V auxiliary converter for external display/shift-light/buzzer needs. This preserves reliable CAN/timer/button wake without a second wake MCU and still meets the revised 0.424 mA parked-current targets on paper.
 
 ## Regulator comparison and freeze
 
@@ -148,6 +152,7 @@ Primary sources are listed below. LMQ66420MC3RXBRQ1 silicon is frozen for both c
 - Worldsemi, [WS2812 family](https://world-semi.com/ws2812-family/), V6 family overview; exact V6 controlled data sheet/order code remains open.
 - TI, [TPA2005D1-Q1](https://www.ti.com/product/TPA2005D1), automotive mono class-D amplifier data sheet and product status.
 - TI, [LP5814](https://www.ti.com/product/LP5814), four-channel I2C LED driver data sheet and product status.
+- Bourns, [SM8SF-Q data sheet](https://www.bourns.com/docs/Product-Datasheets/SM8SF-Q.pdf); TI, [LM74502-Q1 data sheet](https://www.ti.com/lit/ds/symlink/lm74502-q1.pdf); Nexperia, [PMEG6030EP-Q data sheet](https://assets.nexperia.com/documents/data-sheet/PMEG6030EP-Q.pdf).
 - Belden, [1213A 26 AWG cable](https://www.belden.com/products/cable/electronic-wire-cable/multi-conductor-cable/1213a), 44.4 Ω/1000 ft conductor-resistance reference.
 - TI product data: [LMQ66420-Q1](https://www.ti.com/product/LMQ66420-Q1), [LM53602-Q1](https://www.ti.com/product/LM53602-Q1), [TPS7B82-Q1](https://www.ti.com/product/TPS7B82-Q1).
 - Infineon, [TLS4120D0EP V33](https://www.infineon.com/part/TLS4120D0EP-V33).
