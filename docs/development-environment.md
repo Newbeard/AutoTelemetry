@@ -91,7 +91,7 @@ ESP-IDF already supplies the required operations: `idf.py build`, `idf.py flash`
 
 The official VS Code extension is installed. On first use, run **ESP-IDF: Configure ESP-IDF Extension**, choose the existing EIM installation, and select v6.0.2. Keep user paths in VS Code user settings, not committed repository settings. Hardware serial-port selection also remains a user setting.
 
-Important: ESP-IDF documents that its own path and project path must not contain spaces. This working copy currently lives below `Documents/my progect/`. Before in-repository firmware configuration/build work, move or re-clone the repository to a no-space path and repeat the smoke checks. This task does not relocate the working copy.
+ESP-IDF documents that its own path and project path must not contain spaces. The working copy was relocated to `${HOME}/AutoTelemetry` and reverified there on 2026-08-17. From that repository working directory, EIM activation, `idf.py set-target esp32s3`, and a complete disposable `hello_world` build under `/private/tmp` succeeded. The original space-in-path blocker is resolved. Because Python virtual-environment launchers contain absolute interpreter paths, recreate `.venv` from `requirements-dev.txt` after any future repository relocation rather than copying the environment.
 
 ## Mechanical CAD
 
