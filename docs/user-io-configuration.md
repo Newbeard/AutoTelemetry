@@ -1,10 +1,10 @@
 # User I/O, configuration and future Tire Module architecture
 
-Status: Task 4.7 synchronized architecture/interface freeze, 2026-08-17. This document does not authorize firmware, schematic, PCB, flex-layout, CAD, Tire Module electronics, or manufacturing work.
+Status: Task 5A-DOC validation amendment, 2026-08-17. This document does not authorize firmware, schematic, PCB, flex-layout, CAD, Tire Module electronics or manufacturing work. Task 5A power blockers remain unresolved.
 
 ## Scope and disposition
 
-Telemetry v1 keeps the ESP32-S3, one Classical CAN channel, GPIO map, 2 A AUX5 rail, 1 A protected shift branch, and three-wire shift-light connector from Task 4. The future AutoTelemetry Tire Module remains a separate product.
+Telemetry v1 keeps the ESP32-S3, one Classical CAN channel, GPIO map, 1 A protected shift branch and three-wire shift-light contract. The AUX5 regulator/continuous-load requirement remains `REOPENED` by Task 5A. The future AutoTelemetry Tire Module remains a separate product.
 
 Task 4.7 resolves two previously proposed Task 4 hardware changes:
 
@@ -207,6 +207,12 @@ The exact HTTP/TLS certificate and ownership-provisioning model remains a threat
 
 The future UI scope is vehicle/profile and CAN mode, safe polling policy, display type/layout/brightness, complete shift-light settings, alarm thresholds/volume/mute, user-safe GNSS settings/diagnostics, RaceChrono status, logging/storage, device versions/diagnostics/reboot/factory reset, and updates. Raw CAN transmission, arbitrary register writes and unbounded engineering values are excluded outside a separately gated service build/mode.
 
+## User-I/O validation and expert diagnostics
+
+Shift-light, sounder, display, BLE and configuration-mode Wi-Fi participate in controlled A/B interference tests and the mandatory `FULL_LOAD_INTERFERENCE_TEST` defined in [system-validation-plan.md](system-validation-plan.md). Test cases include maximum permitted shift brightness and rapid transitions, low/STREET/TRACK sound profiles and tones, active display updates, BLE streaming and Wi-Fi coexistence where meaningful. Results compare power-rail, CAN, GNSS, radio, storage and runtime-health evidence against a stable baseline.
+
+Useful health may be available through serial/debug, an expert/service Web UI page, the first-party Device Protocol, a future app and/or SD diagnostic logs. Normal user dashboards show actionable state, not unexplained CAN counters, memory minima or engineering-only RF statistics.
+
 ## OTA firmware
 
 Use ESP-IDF `esp_https_ota` with server certificate verification and the bootloader OTA data mechanism. Reserve two application slots plus a factory/recovery path sized from measured firmware. A candidate has signed manifest/image, hardware revision and minimum bootloader/schema compatibility, semantic version/build identity, security version, size and digest.
@@ -220,6 +226,8 @@ Independent profile update is allowed only when a profile can remain declarative
 ## Future AutoTelemetry Tire Module
 
 The optional Tire Module is a separate future product. It may acquire four-wheel pressure, TPMS internal temperature, multi-point surface/tread temperature and sensor health, then send measurements to the main unit. The main unit timestamps, validates and normalizes them before any RaceChrono, logger, display or app adapter.
+
+Future validation covers missing module/node, stale pressure, stale temperature, invalid sensor, RF/link loss, module reboot, main-unit reboot, data recovery and RaceChrono forwarding. Tire failure degrades only tire channels and cannot stop the main unit's CAN/GNSS acquisition, RaceChrono telemetry, logger, display or alarms.
 
 Reserve canonical concepts such as `TIRE_PRESSURE_FL/FR/RL/RR` in Pa, `TIRE_TEMPERATURE_FL/FR/RL/RR` in degC, and indexed tread temperatures with explicit left-to-right orientation and sensor position metadata. Exact registry IDs remain subject to the channel-registry freeze.
 

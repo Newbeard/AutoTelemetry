@@ -1,6 +1,6 @@
 # Universal OBD/CAN + GNSS Telemetry Gateway architecture
 
-Status: product architecture reconciled to the Task 4.6 research freeze. This document defines boundaries and responsibilities, not firmware tasks, wire formats, schemas, or code.
+Status: Task 5A-DOC validation amendment, 2026-08-17. This document defines boundaries and responsibilities, not firmware tasks, wire formats, schemas, code or hardware selection.
 
 ## Product and monorepo boundary
 
@@ -42,6 +42,8 @@ ACQUISITION / VEHICLE SUPPORT
 ```
 
 Acquisition producers publish candidates; the core selects one normalized source per channel; clients consume the same stable contract. No output owns acquisition. A RaceChrono disconnect, display reset, SD error, or future app absence cannot stop CAN/GNSS processing.
+
+A cross-cutting diagnostic/health subsystem receives defined counters, state, last-success timestamps and fault/recovery events from services without owning their work. It makes health available to supervision, logger and expert/service interfaces. Normal telemetry channels and engineering diagnostics remain distinct contracts.
 
 ## Vehicle support layers
 
@@ -176,7 +178,24 @@ This is a responsibility model, not a frozen task count. Mandatory principles:
 - GNSS failure cannot stop CAN; BLE failure cannot stop local outputs/logging; display failure cannot stop streaming; SD failure cannot stop acquisition;
 - missing profile falls back to Generic OBD-II where possible, otherwise explicit unavailable channels.
 
+Reserved health categories include CAN/diagnostic frames, drops, errors, bus-off/recovery and timeouts; GNSS fix/C/N0/gaps/reacquisition/parser health; BLE/Wi-Fi connections and failures; SD/logger write, mount and backpressure health; and system uptime, reset/brownout/watchdog, memory, queue and service-restart health. Exact data types, retention, rollover and transport are deferred. Metrics must be useful rather than collected indiscriminately.
+
 Power management coordinates a quiesce barrier: stop new diagnostics, make outputs safe, flush/close logger within a bounded deadline, save eligible state, disable peripheral domains, configure wake, then sleep. A failed optional participant is timed out and reported; it cannot hold the vehicle awake indefinitely.
+
+## Validation hooks and deterministic evidence
+
+Production responsibilities expose test seams at stable boundaries:
+
+- decoders and vehicle profiles accept provenance-controlled recorded/synthetic CAN fixtures;
+- the normalized core accepts deterministic time and expected source/validity transitions;
+- OBD/ISO-TP/UDS behavior can use virtual or protected physical ECU emulation;
+- GNSS parser behavior can use replay while RF performance remains a separate physical test;
+- outputs and logger accept deterministic normalized samples and injected failures;
+- power, wake and optional services expose state/health needed by bench and future HIL automation.
+
+Recorded CAN replay is a first-class regression mechanism. BMW E81/N43 is the first real fixture, not a branch in core logic; future vehicles add fixtures and profile expectations through the same contracts.
+
+Prototype validation follows host/software → bench → stationary vehicle → road → track/slalom stress. `FULL_LOAD_INTERFERENCE_TEST` and controlled A/B cases exercise noisy/high-current consumers while observing power, CAN, GNSS, radios, storage and runtime health. Procedures and evidence records are controlled by [system-validation-plan.md](system-validation-plan.md).
 
 ## Configuration
 
@@ -196,11 +215,11 @@ The future web UI and first-party app are clients of the same configuration mana
 
 ## Future tire module and second CAN
 
-Tire pressure, tire temperature and left-to-right tread-temperature arrays are future normalized producers, not Telemetry v1 sensor hardware. A separate module is preferred and its transport remains open. RaceChrono naming must be verified against the target app release. ESP32-S3 has one native TWAI controller; neither a second CAN controller nor an ESP32-C6 migration is authorized for v1.
+Tire pressure, tire temperature and left-to-right tread-temperature arrays are future normalized producers, not Telemetry v1 sensor hardware. A separate optional module is preferred and its transport remains open. Missing/stale/invalid data, link loss and either-side reboot degrade only tire channels; they cannot stop the main unit's CAN/GNSS acquisition or other consumers. RaceChrono naming must be verified against the target app release. ESP32-S3 has one native TWAI controller; neither a second CAN controller, Tire RF receiver nor an ESP32-C6 migration is authorized for v1.
 
 ## Hardware partition and states
 
-The approved pre-schematic hardware direction remains the hybrid rail-on architecture: protected/source-isolated OBD and USB input, low-IQ MAIN_3V3 for ESP32/TCAN, independent GNSS/SD/display switches, and normally-off AUX5. The complete numerical evidence remains in `power-budget.md` and `power-wake-review.md`; this software phase changes no GPIO, rail, CAN, RF, or USB decision.
+The historical pre-schematic partition remains protected/source-isolated OBD and USB input, low-IQ MAIN_3V3 for ESP32/TCAN, independent GNSS/SD/display switches and normally-off AUX5. Task 5A keeps the vehicle-input implementation, AUX5 continuous-load/regulator decision and input filter blocked/reopened; authoritative evidence is in `task5a-power-calculations.md`. This validation amendment changes no GPIO, rail, CAN, RF, USB or power-component decision.
 
 Software power states remain `PARKED/SLEEP`, `WAKE`, `ACTIVE`, `SHUTDOWN_PENDING`, and `USB_DEBUG`. CAN traffic plus profile/policy is stronger activity evidence than vehicle voltage alone.
 
@@ -233,5 +252,7 @@ Before implementation:
 - define signed/trusted profile and firmware update policy;
 - resolve root/upstream and third-party licensing before distribution;
 - establish fixture privacy/redaction policy for recorded vehicle data.
+- define diagnostic metric schemas, retention/reset semantics and expert/service access.
+- refine revision-specific A/B and `FULL_LOAD_INTERFERENCE_TEST` limits from measured prototype baselines.
 
 No schematic capture or implementation is authorized by this architecture document.

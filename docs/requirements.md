@@ -1,6 +1,6 @@
 # Telemetry v1 requirements
 
-Status: Task 4.7 automotive-electrical/protection freeze, audited 2026-08-17. Remaining blockers are listed in [`schematic-architecture.md`](schematic-architecture.md). Numerical evidence uses `VERIFIED_DATASHEET`, `CALCULATED`, `DESIGN_REQUIREMENT`, and `ASSUMPTION` as defined in [`power-budget.md`](power-budget.md).
+Status: Task 5A-DOC validation amendment, 2026-08-17. Task 5A vehicle-input and power blockers remain unresolved in [schematic-architecture.md](schematic-architecture.md) and [task5a-power-calculations.md](task5a-power-calculations.md). This amendment changes no hardware selection.
 
 ## Scope and invariants
 
@@ -32,7 +32,7 @@ Status: Task 4.7 automotive-electrical/protection freeze, audited 2026-08-17. Re
 | EXP-01 | Expansion and debug | Expose I2C, UART/debug access, useful spare GPIO, and named test points for CAN-H/L, vehicle input, 3.3 V, GNSS UART, and ground |
 | PWR-01 | Permanent OBD installation | Verify active, transient and complete parked current against [`power-budget.md`](power-budget.md); release limit <1.0 mA, stretch <0.50 mA at 12 V/25 °C (`DESIGN_REQUIREMENT`) |
 | PWR-02 | Wake sources | Rail-on ESP32/CAN standby wake from CAN, timer, MODE, vehicle-voltage hint and USB (`DESIGN_REQUIREMENT`) |
-| PWR-03 | Power domains | LMQ66420MC3RXBRQ1 for ≥2.0 A MAIN_3V3 and ≥2.0 A switched AUX5; TPS22919-Q1 separately switches GNSS, SD, DISPLAY_3V3, and DISPLAY_5V |
+| PWR-03 | Power domains | LMQ66420MC3RXBRQ1 remains the MAIN_3V3 candidate; the AUX5 regulator/continuous-load requirement remains `REOPENED` by Task 5A; TPS22919-Q1 separately switches GNSS, SD, DISPLAY_3V3, and DISPLAY_5V |
 | PWR-04 | USB source isolation | Support vehicle-only, USB-only, simultaneous and unpowered cases with no back-feed to OBD pin 16 or USB VBUS; tolerance-bounded vehicle UVLO opens above the USB crossover (`DESIGN_REQUIREMENT`) |
 | PWR-05 | Electrical envelope | Full operation at 6–18 V; +26 V/60 s and +38 V suppressed-load-dump-source survival by disconnect; −14 V/60 s reverse survival; `VEHICLE_PROTECTED` ≤24 V in the approved test matrix (`DESIGN_REQUIREMENT`) |
 | PWR-06 | Crank/brownout | Controlled reset and automatic recovery; full crank ride-through is not required; no reboot loop, SD corruption acceptance gap, or unintended CAN transmission (`DESIGN_REQUIREMENT`) |
@@ -63,7 +63,13 @@ Status: Task 4.7 automotive-electrical/protection freeze, audited 2026-08-17. Re
 | UI-02 | Status indication | An approved LP5814-controlled common-anode RGB indicator reports state without consuming three MCU GPIOs and remains off parked |
 | FUT-01 | Future tire telemetry boundary | A separate future module may publish normalized pressure, temperature, tread-temperature and health data; no tire electronics or transport is added to v1 |
 | TST-02 | Layered verification | Host tests, CAN/GNSS replay, virtual/physical ECU simulation and later HIL precede controlled vehicle validation |
+| TST-03 | Staged product validation | Major prototype evidence progresses through host/software, bench, stationary vehicle, road and track/slalom stages; later stages do not replace earlier evidence |
+| TST-04 | Full-load interference gate | `FULL_LOAD_INTERFERENCE_TEST` simultaneously stresses permitted shift-light, sounder, SD, display, BLE, target-rate GNSS and representative CAN/diagnostic load while rail, RF, bus, storage and runtime health are recorded |
+| DIA-01 | Runtime diagnostics | CAN, GNSS, BLE, Wi-Fi, SD/logger and system services expose meaningful health/error counters or state where practical, with defined semantics and expert/service access |
 | RES-01 | Fault isolation | Acquisition cannot be blocked by display, storage, network, or client work; queues are bounded and timeouts, health state, restart policy, and watchdog ownership are explicit |
+| RES-02 | Peripheral failure isolation | GNSS, BLE, Wi-Fi/configuration, display, SD, Tire Module, shift-light and sound failures cannot destabilize unrelated core acquisition/outputs |
+| LAY-01 | EMI/GNSS/power placement gate | A dedicated placement/return-path/cable-coupling review passes before final PCB routing or manufacturing release |
+| TST-05 | Professional-validation boundary | Internal functional, bench, vehicle and track tests are never represented as regulatory compliance or automotive qualification |
 | TST-01 | Deterministic verification | Core, profiles, scheduling, protocols, outputs, migrations, overload, and fault behavior are testable with deterministic clocks and provenance-controlled fixtures |
 | MEC-01 | Independent mechanical layers | Core enclosure, display enclosure, and vehicle mount are separately versioned and connected through controlled mechanical/electrical contracts |
 
@@ -77,6 +83,7 @@ Status: Task 4.7 automotive-electrical/protection freeze, audited 2026-08-17. Re
 - Establish RF keep-outs, controlled-impedance rules, antenna bias filtering/protection, and conducted/radiated noise targets before GNSS layout.
 - Define connector pin numbering, load limits, short-circuit behavior, cable length, ESD protection, and hot-plug behavior for every external interface.
 - Add test points without creating high-stub or antenna structures on CAN, USB, SPI, or GNSS RF nets.
+- Control staged procedures, instrumentation, evidence and future acceptance limits through [system-validation-plan.md](system-validation-plan.md).
 
 ## Deferred decisions
 

@@ -1,6 +1,6 @@
 # Power architecture baseline
 
-Status: reconciled to the Task 4 component freeze, 2026-08-14. Detailed calculations are authoritative in [`power-budget.md`](power-budget.md); exact frozen devices and remaining blockers are in [`component-freeze.md`](component-freeze.md) and [`schematic-architecture.md`](schematic-architecture.md).
+Status: reconciled to the Task 4 component freeze, 2026-08-14. Task 5A is **BLOCKED** at the schematic-capture gate; the calculations and decision gates are recorded in [`task5a-power-calculations.md`](task5a-power-calculations.md). Detailed calculations are authoritative in [`power-budget.md`](power-budget.md); exact frozen devices and remaining blockers are in [`component-freeze.md`](component-freeze.md) and [`schematic-architecture.md`](schematic-architecture.md).
 
 ## RejsaCAN v3.4 reference path
 
@@ -44,18 +44,18 @@ This is a descriptive reading of the source, not a validation. Exact diode direc
 | GNSS_3V3 | NEO-M9N and antenna-bias controls | TPS22919QDCKRQ1 | ≥200 mA; off parked |
 | SD_3V3 | microSD | TPS22919QDCKRQ1 | ≥250 mA; off parked |
 | DISPLAY_3V3 | external module | TPS22919QDCKRQ1 and 2N7002KQ BL control | ≥400 mA; off parked |
-| AUX5 | display option, shift-light and sounder source | LMQ66420MC5RXBRQ1 | ≥2.0 A aggregate; off parked; enabled by GPIO21 |
+| AUX5 | display option, shift-light and sounder source | LMQ66420MC5RXBRQ1 | 2.0 A silicon class; continuous hot-load capability is not established; off parked; enabled by GPIO21 |
 | DISPLAY_5V | optional display rail | TPS22919QDCKRQ1 from AUX5 | ≥600 mA; mutually exclusive with incompatible display power |
 | SHIFT_5V | external ten-pixel light | TPS1H100BQPWPRQ1 from AUX5 | 0.50 A qualified load, 1.0 A protected fault envelope; cable ≤0.5 m |
 | SOUNDER5 | onboard sounder | approved-direction TPA2005D1TDGNRQ1 from AUX5 | 300 mA design envelope; exact speaker provisional |
 
-`CALCULATED`: the 3.3 V simultaneous peak envelope is 1.050 A; after 25% margin it is 1.313 A, so the required regulator class is ≥2.0 A. `CALCULATED`: the 5 V named-load sum is 1.30 A and 25% margin produces 1.625 A, so AUX5 remains ≥2.0 A. See the source-to-formula chain in `power-budget.md`.
+`CALCULATED`: the 3.3 V simultaneous peak envelope is 1.050 A; after 25% margin it is 1.313 A, so the required regulator class is ≥2.0 A. The 5 V named-load sum is 1.30 A and 25% margin produces 1.625 A. Task 5A found 1.30 A conditionally plausible only pending measured converter efficiency and demonstrated `RθJA ≤50 °C/W`; 1.625 A must be managed/short-duration pending proof, and 2 A continuous at 85 °C is not defensible. See the source-to-formula chain in [`power-budget.md`](power-budget.md) and the thermal screen in [`task5a-power-calculations.md`](task5a-power-calculations.md).
 
 ## Parked result
 
-The Task 4.7 complete tree separately includes the LM74502-Q1 controller, SM8SF24CA-Q, buck IQ, UV/OV/sensing, TCAN, ESP32, TCA6408A, LP5814 shutdown, disabled switches, USB isolation, signal ESD and miscellaneous leakage. `CALCULATED`: subtotal 211.54 µA plus a 100% allowance gives ≤423.08 µA (0.424 mA) at 12 V. This passes <1.0 mA and the <0.50 mA room target on paper by 0.576 mA and 0.076 mA; complete-board measurements remain mandatory.
+The Task 4.7 complete tree separately includes the LM74502-Q1 controller, SM8SF24CA-Q, both buck-converter parked currents, UV/OV/sensing, TCAN, ESP32, TCA6408A, LP5814 shutdown, disabled switches, USB isolation, signal ESD and miscellaneous leakage. Adding the AUX5 converter's 1 µA maximum shutdown current gives a `CALCULATED` subtotal of 212.54 µA; a 100% allowance gives ≤425.08 µA (0.425 mA) at 12 V. This passes <1.0 mA and the <0.50 mA room target on paper by 0.575 mA and 0.075 mA. A conditional damping-capacitor candidate with 50 µA maximum leakage would instead give `2×(212.54+50)=525.08 µA`, failing the <0.50 mA stretch target; a lower-leakage solution or requirement change is a Task 5A decision gate. Complete-board measurements remain mandatory.
 
-The vehicle input freeze is `0437002A` fuse → bidirectional `SM8SF24CA-Q` → `LM74502QDDFRQ1` with back-to-back `DMT6007LFGQ-7` MOSFETs → damped post-switch C-L-C topology → converters. Task 4.7 freezes 6–18 V operation, disconnect survival at +26 V/60 s and +38 V suppressed load dump, −14 V/60 s reverse survival, and ≤24 V downstream; exact thresholds/inrush/filter order codes and physical tests remain open. At the 12.458 W calculated output envelope and an assumed 80% efficiency, 12 V input current is 1.298 A; the 2 A fuse has 54.1% current margin (`ASSUMPTION` + `CALCULATED`), not a proven hot hold/trip result.
+The Task 4.7 historical candidate chain was `0437002A` fuse → bidirectional `SM8SF24CA-Q` → `LM74502QDDFRQ1` with back-to-back `DMT6007LFGQ-7` MOSFETs → damped post-switch C-L-C topology → converters. Task 5A reopens its threshold implementation, TVS/FET/fuse coordination and exact filter population; it is not approved for capture. The 6–18 V operation, +26 V/60 s jump, +38 V suppressed-load-dump, −14 V/60 s reverse and ≤24 V downstream values remain `DESIGN_REQUIREMENT` inputs pending an approved compatible implementation. At the 12.458 W calculated output envelope and assumed 80% efficiency, input current is 2.595 A at 6 V, 1.730 A at 9 V and 1.298 A at 12 V; the 2 A fuse therefore needs an explicit low-voltage/hot load policy or must be reopened.
 
 ## Required calculations and tests before layout
 

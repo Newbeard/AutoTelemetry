@@ -1,6 +1,6 @@
 # Test and reference architecture
 
-Status: Task 4.6 research freeze, 2026-08-17. No third-party code was copied, linked, vendored or executed. Repository activity is a review snapshot and must be rechecked before use.
+Status: Task 5A-DOC validation amendment, 2026-08-17. No third-party code was copied, linked, vendored or executed. Repository activity is a review snapshot and must be rechecked before use.
 
 ## Purpose
 
@@ -17,7 +17,13 @@ AutoTelemetry bench integration
           |
 hardware-in-loop fault/power/radio tests
           |
-controlled vehicle validation
+controlled stationary-vehicle validation
+          |
+road validation
+          |
+track/slalom stress
+          |
+professional validation where applicable
 ```
 
 Each layer has versioned inputs, expected outputs and failure cases. Passing a higher layer does not replace the lower deterministic evidence.
@@ -41,7 +47,7 @@ Absence of a license is not permission. Classification records intended use, not
 
 ## OBD emulator role
 
-Magnus's simple emulator is appropriate for one bounded purpose: prove that a bench node can receive a functional request and return plausible RPM/speed responses over physical Classical CAN. It is not a production-code base and is not sufficient for protocol qualification.
+Magnus's simple emulator is classified as `INITIAL PHYSICAL-CAN SMOKE-TEST REFERENCE / DEVELOPMENT TOOL`. Its bounded purpose is to prove that a bench node can receive a functional request and return plausible supported-PID/RPM/speed/basic Generic OBD responses over physical Classical CAN. It is not a production-code base, complete ECU environment or protocol-qualification fixture. No third-party source is integrated by this amendment.
 
 The long-term fixture must generate scripted, reproducible cases for:
 
@@ -68,7 +74,9 @@ Configuration tests cover every supported schema migration, interrupted commit, 
 
 ### CAN/GNSS replay
 
-Replay fixtures into the same decoder/acquisition boundaries used by target firmware. Assert decoded sample value/unit/source/time/validity and every drop/backoff event. A replay manifest records provenance, permission, redaction, profile applicability, capture tool/version, timestamp domain, hash and expected output. Synthetic fixtures are preferred for public CI.
+Replay fixtures into the same decoder/acquisition boundaries used by target firmware. CAN replay is a first-class regression mechanism: recorded fixture → vehicle profile → normalized core → expected channels/values. Assert decoded sample value/unit/source/time/validity and every drop/backoff event. A replay manifest records provenance, permission, redaction, profile applicability, capture tool/version, timestamp domain, hash and expected output. Synthetic fixtures are preferred for public CI.
+
+BMW E81/N43 is the first real vehicle fixture, not a special-case code or test architecture. Future vehicles add fixtures and expectations through the same contracts.
 
 GNSS replay covers message mix/rate, fix loss/recovery, UTC mapping, malformed messages and 20-25 Hz UART load. Replay does not establish RF performance.
 
@@ -90,7 +98,7 @@ development workstation
 
 Future HIL also observes shift data/power/fault, status RGB, sounder waveform/acoustic output, display SPI, SD behavior, CAN TX inhibition, wake/sleep and current. Electrical transient, ESD/EMC, RF and acoustic validation remain separate qualified tests even when orchestrated from the same workstation.
 
-No hardware purchase is required by Task 4.6.
+No HIL equipment selection or purchase is required by Task 5A-DOC.
 
 ## Acceptance ownership
 
@@ -101,7 +109,11 @@ No hardware purchase is required by Task 4.6.
 | Emulator | Generic OBD/ISO-TP/UDS scheduler changes before vehicle use |
 | RaceChrono compatibility | Captured against the target app release; tire channel naming and overlay verified explicitly |
 | HIL | Firmware release candidate and hardware revision, with repeatable fixture revisions |
-| Vehicle | Last validation layer under an approved safety procedure; never the only evidence |
+| Bench integration | Every prototype revision before stationary-vehicle use, including A/B and full-load interference evidence |
+| Vehicle stationary | OBD, crank/start/shutdown, wake, grounds, accessories and ECU/tool coexistence under an approved procedure |
+| Road | Long-duration functional, transition, vibration and temperature evidence after stationary validation |
+| Track/slalom | Highest realistic combined workload; road evidence is not a substitute |
+| Professional | Applicable pre-compliance/compliance/transient/environmental evidence for serious commercial release; internal testing is not compliance |
 
 ## Repository reservation
 

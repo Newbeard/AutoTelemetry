@@ -2,6 +2,8 @@
 
 Status: Task 4.7 complete pre-schematic electrical/protection block definition, 2026-08-17. This is the controlled input to a future derivative schematic. It is not a schematic, PCB placement, layout, manufacturing package or compliance claim.
 
+Task 5A status: **BLOCKED before KiCad project or schematic-sheet creation**. No Task 5A schematic capture, ERC run or review PDF was produced. The blocking calculations and source evidence are in [`task5a-power-calculations.md`](task5a-power-calculations.md).
+
 ## Sheet hierarchy and controlled net names
 
 | Sheet | Functional ownership | Principal ports/nets |
@@ -27,8 +29,8 @@ No Telemetry v1 sheet adds TPMS, tire temperature, IMU, analog sensor hubs, an e
 | Block | Inputs | Outputs / rails | Control / frozen parts | Constraints, test points and dependencies |
 |---|---|---|---|---|
 | OBD entry | OBD16, OBD4/5, OBD6/14 | `VBAT_OBD_RAW`, `POWER_GND`, `CANH_OBD`, `CANL_OBD` | Connector/harness provisional | Pins 4/5 join once at entry; TP raw battery/ground; connector mechanical freeze required |
-| Vehicle protection | `VBAT_OBD_RAW` | `VEHICLE_PROTECTED`, `VEHICLE_PRESENT`, `PWR_FAULT_N` | `0437002A`, `SM8SF24CA-Q`, `LM74502QDDFRQ1`, 2×`DMT6007LFGQ-7`; UV/OV/inrush passives provisional | 6 V UV, 18 V OV nominal, ≤24 V protected; TP fused/clamped/switched/protected; Task 5 tolerance/SOA calculations |
-| Main rails | `VEHICLE_PROTECTED`, `USB5_PROTECTED` | `SYS_IN`, `MAIN_3V3`, `AUX5`, PGOOD | 2×LMQ66420-Q1; exact L/C provisional | AUX5 off USB-only/parked; TP SYS/rails/EN/PGOOD; thermal and stability gate |
+| Vehicle protection | `VBAT_OBD_RAW` | `VEHICLE_PROTECTED`, `VEHICLE_PRESENT`, `PWR_FAULT_N` | Task 4.7 candidates `0437002A`, `SM8SF24CA-Q`, `LM74502QDDFRQ1`, 2×`DMT6007LFGQ-7`; all affected selections `REOPENED` by Task 5A | 6–18 V, USB crossover and ≤24 V protected remain requirements; threshold and TVS/FET/fuse coordination block capture |
+| Main rails | `VEHICLE_PROTECTED`, `USB5_PROTECTED` | `SYS_IN`, `MAIN_3V3`, `AUX5`, PGOOD | MAIN LMQ66420MC3-Q1 retained; AUX LMQ66420MC5-Q1 `REOPENED`; exact L/C provisional | AUX5 off USB-only/parked; TP SYS/rails/EN/PGOOD; AUX continuous-load, thermal and stability gate |
 | MCU/expander | `MAIN_3V3`, reset/USB/CAN/GNSS/SPI inputs | GPIO controls, I2C, reset defaults | ESP32-S3-WROOM-1-N16R8, TCA6408A-Q1 | GPIO0/3/45/46 strap rules; all power enables default off; logic test pads only |
 | CAN PHY | `CANH/L_OBD`, `CAN_TX`, `CAN_STB`, MAIN_3V3 | `CANH/L_PHY`, `CAN_RX/WUP` | TCAN3404DRQ1, ESDCAN04-2BWY, ACT45B-510 DNP, split 120 Ω DNP | Product termination OFF; compact CANH/L and logic TPs; source protection/ground dependency |
 | GNSS digital/power | MAIN_3V3, UART/control | `GNSS_3V3`, `GNSS_RX/TX`, reset/timepulse | NEO-M9N-00B, TPS22919-Q1 | Off parked; TP rail/UART/reset/timepulse; active-antenna and RF-sheet dependency |
@@ -41,6 +43,8 @@ No Telemetry v1 sheet adds TPMS, tire temperature, IMU, analog sensor hubs, an e
 | Debug/test | Named sheet ports | Compact pads/current links | No active architecture | Test access must not add CAN/USB/RF/SPI stubs or increase board size without value |
 
 ## Top-level power architecture
+
+The following is the historical Task 4.7 intended topology. It was **not captured** and is blocked from production-schematic use pending the Task 5A decisions.
 
 ```text
 OBD16 / VBAT_OBD_RAW
@@ -63,7 +67,7 @@ USB-C VBUS -> USB ESD -> TPS2553-Q1 -> PMEG6030EP-Q -------------+
                                                                                + TPA2005D1 sound branch
 ```
 
-The vehicle controller variant is changed from H to non-H so TI's external `Cdvdt` inrush network can be calculated around the final post-switch capacitance. UV falling is 6.0 V nominal and OV is 18.0 V nominal. Task 5 must guarantee UV cutoff above the highest USB-derived `SYS_IN` crossover, steady OV cutoff ≤20 V, and `VEHICLE_PROTECTED` ≤24 V in the approved transient matrix.
+The Task 4.7 non-H controller direction supported an external `Cdvdt` network, but Task 5A proved that its published tolerances cannot guarantee either the 6 V/USB crossover window or operation through 18 V with cutoff by 20 V. The threshold implementation is `REOPENED`; `VEHICLE_PROTECTED ≤24 V` remains a requirement for any later approved transient matrix.
 
 The USB Schottky is required because TPS2553 reverse protection is not rated for the protected vehicle voltage. PMEG blocks `SYS_IN` to VBUS. When OBD is absent the vehicle controller is off and the back-to-back FETs block USB-to-OBD. When both sources are present, UVLO must open the non-reverse-blocking vehicle path before a sagging OBD node falls below the USB-derived rail; this crossover and all reverse currents are prototype acceptance tests. AUX5 remains disabled in USB-only mode.
 
@@ -71,7 +75,7 @@ The USB Schottky is required because TPS2553 reverse protection is not rated for
 
 OBD4 and OBD5 arrive on separate conductors and join once at the connector-entry region into one continuous `POWER_GND` plane. TVS/fuse/input-capacitor current returns stay in that region. CAN, USB, GNSS, SD, display, shift and audio use the same DC ground net with layout-managed return paths; no split ground island is permitted. USB shell population is a connector-local EMC option. Speaker outputs are BTL and never ground.
 
-The frozen filter topology is post-switch damped C-L-C: raw 100 nF + 1 µF/100 V, post-switch 100 nF + 1 µF/50 V, 2.2–4.7 µH at ≥3 A/≥4 A saturation, then 2×4.7 µF/50 V plus 47–100 µF/50 V and an R-C damping footprint. Exact order codes, damping, effective capacitance, inrush and converter impedance interaction remain Task 5 calculations. See [`input-protection-architecture.md`](input-protection-architecture.md).
+The Task 4.7 filter direction is post-switch damped C-L-C. Task 5A's conditional candidate uses a 2.2 µH inductor, at least 19.9 µF direct effective capacitance and a 100 µF/0.22 Ω damping branch, but it is not approved: exact MLCC bias/temperature data, the damping resistor, impedance validation and leakage remain unresolved, and the candidate capacitor would make the doubled parked envelope 0.525 mA. See [task5a-power-calculations.md](task5a-power-calculations.md).
 
 ## Rail contract
 
@@ -82,7 +86,7 @@ The frozen filter topology is post-switch damped C-L-C: raw 100 nF + 1 µF/100 V
 | `GNSS_3V3` | 3.3 V | 70 mA design continuous | 200 mA branch requirement | TPS22919, `EXP_P0/GNSS_EN`; off parked | 100 nF at every module VCC pin group plus local bulk per u-blox reference; measurement link |
 | `SD_3V3` | 3.3 V | card-dependent | 250 mA requirement | TPS22919, `EXP_P1/SD_EN`; off parked | local 100 nF plus ≥10 µF starting bulk; final value from card inrush measurement |
 | `DISPLAY_3V3` | 3.3 V | 300 mA initial module contract | 400 mA maximum | TPS22919, `EXP_P2/DISP3_EN`; off parked | connector-side 100 nF + ≥22 µF starting bulk; display requires local decoupling |
-| `AUX5` | 5.0 V | application-managed | 1.625 A combined peak with margin | LMQ EN from GPIO21; off parked/USB-only | same TI 2.2 MHz starting network; recalculate thermal/inrush |
+| `AUX5` | 5.0 V | 1.30 A conditional pending measured efficiency/`RθJA` | 1.625 A managed/short-duration pending proof | LMQ EN from GPIO21; off parked/USB-only | 2 A continuous at 85 °C is not defensible; regulator/load policy reopened |
 | `DISPLAY_5V` | 5.0 V | 500 mA | 600 mA maximum | TPS22919, `EXP_P3/DISP5_EN`; only after AUX5 PGOOD | connector-side bulk; never enable with DISPLAY_3V3 for an incompatible module |
 | `SHIFT5` | 5.0 V | ≤500 mA qualified | 1 A protected fault envelope | TPS1H100-Q1, `EXP_P4/SHIFT5_EN`; only after AUX5 PGOOD | current-limit resistor calculation, fault sense, connector ESD and bulk |
 | `SOUNDER5` | 5.0 V | ≤300 mA envelope | 8 Ω, ≥1 W speaker provisional | AUX5 plus approved-direction TPA2005D1TDGNRQ1, GPIO17 waveform/control; off parked | BTL output; input reconstruction/coupling, PowerPAD copper and local decoupling |
@@ -104,7 +108,7 @@ Startup order is `SYS_IN -> MAIN_3V3/PGOOD -> ESP reset release -> expander init
 
 ### Parked-current consequence
 
-Task 4.7 separates the controller, TVS, sensing, expander, LED-driver and USB-isolation paths. The 12 V subtotal is 211.54 µA; applying a 100% uncertainty/temperature allowance gives 423.08 µA = 0.424 mA (`CALCULATED`). This is 0.053 mA above Task 4.6 and passes the <1.0 mA requirement and <0.50 mA room-temperature stretch target on paper by 0.576 mA and 0.076 mA, respectively. Neither result is accepted until complete-board measurement over voltage and temperature. See [`power-budget.md`](power-budget.md).
+Adding the omitted AUX5 buck's 1 µA maximum shutdown current corrects the base subtotal to 212.54 µA; applying the historical 100% allowance gives 425.08 µA = 0.425 mA (`CALCULATED`). This passes <1.0 mA and the <0.50 mA room-temperature stretch target on paper by 0.575 mA and 0.075 mA. The conditional 50 µA-leakage damping capacitor would instead give 525.08 µA = 0.525 mA, failing the stretch target by 0.025 mA. Neither result is accepted until the filter is selected and the complete board is measured over voltage and temperature. See [power-budget.md](power-budget.md).
 
 ## CAN sheet
 
@@ -251,11 +255,14 @@ The one high-impedance Classical-CAN PHY supports raw CAN, Generic OBD-II, futur
 
 ## Schematic-entry blockers
 
-- Complete LM74502 UV/OV divider tolerances, `Cdvdt` inrush, fuse time-current/SOA and damped-filter impedance calculations; later validate the frozen electrical profile physically.
-- LMQ66420 inductor/capacitor/loss/thermal calculations with enclosure ambient and actual copper assumptions.
+- Resolve the LM74502-Q1 threshold conflicts: its guaranteed UV thresholds have no overlap between 6 V operation and USB/vehicle source crossover, and its guaranteed OV thresholds have no overlap between operation through 18 V and cutoff by 20 V.
+- Reopen TVS/FET coordination because the frozen SM8SF24CA-Q has 24 V `VRWM` while the required +26 V jump-start lasts 60 s.
+- Define low-voltage/hot load shedding for the 2 A 0437002A fuse, or reopen the fuse rating and downstream fault coordination.
+- Resolve DMT6007LFGQ-7 negative-pulse off-state stress; the screened worst case can exceed its 60 V `VDS` rating.
+- Qualify AUX5 as a managed peak or change its regulator, and qualify the damped input filter including stability, leakage and the parked-current target.
 - Final OBD, display and shift-light connector mechanical/current/environment selection.
 - Final microSD socket temperature/access choice; exact speaker, RGB LED and acoustic/optical geometry.
 - Exact vehicle-activity detector, protected ADC divider and PWR_FAULT_N circuit.
 - ESD arrays for display/shift connector selected after connector pinout and return geometry.
 
-These blockers do not reopen the frozen system partition, CAN termination default, GPIO45 decision, source isolation, or rail capacities.
+See [task5a-power-calculations.md](task5a-power-calculations.md) for the calculation gate. These blockers do reopen the vehicle-input component implementation and AUX5 continuous-load claim. They do not reopen the unrelated system partition, CAN termination default, GPIO45 decision or downstream functional-sheet allocations unless an approved resolution explicitly changes one of those requirements.

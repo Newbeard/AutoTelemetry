@@ -340,6 +340,7 @@ Maintain at least:
 * `docs/power.md`
 * `docs/rejsacan-analysis.md`
 * `docs/telemetry-v1-change-list.md`
+* `docs/system-validation-plan.md`
 
 Create additional documentation only when it improves traceability.
 
@@ -801,6 +802,47 @@ Recorded CAN / diagnostic fixture
 → Vehicle Profile Decoder
 → Normalized Telemetry
 → Expected Result.
+
+## Product validation and interference gates
+
+### Staged validation
+
+Major prototype releases must progress through the applicable evidence stages:
+
+Host/software tests
+→ bench tests
+→ stationary-vehicle tests
+→ road tests
+→ track/slalom stress tests
+→ professional EMC/pre-compliance/automotive-transient testing before a serious commercial release where applicable.
+
+Stages complement rather than replace one another. Passing a bench or functional test does not establish vehicle robustness, track robustness or compliance.
+
+### Full-load interference
+
+`FULL_LOAD_INTERFERENCE_TEST` is mandatory before a prototype revision can be considered validated. Exercise the highest permitted simultaneous shift-light, sounder, SD-write, display, BLE, GNSS and representative CAN load, including diagnostic polling when enabled and safe. Test configuration-mode Wi-Fi separately and in combination where meaningful.
+
+Compare rail integrity, resets/watchdogs, CAN errors/drops/bus-off, GNSS quality/continuity, BLE/Wi-Fi connectivity, SD/logging errors, display corruption and queue/task health against a controlled baseline. Do not invent final limits before measurement capability and evidence exist.
+
+### Runtime diagnostics
+
+Non-trivial subsystems must expose useful health/error metrics where practical. Reserve meaningful counters/state for CAN/diagnostics, GNSS, BLE, Wi-Fi, SD/logger and system reset/brownout/watchdog/queue/restart health. Define semantics, rollover/reset behavior and access control; do not collect meaningless metrics merely because they are available.
+
+Engineering diagnostics may be available through serial/debug, an expert/service Web UI, the first-party Device Protocol, a future app or diagnostic logs. Do not clutter the normal user dashboard with unexplained engineering counters.
+
+### EMI / GNSS / power placement review
+
+Before final PCB routing or manufacturing release, perform and record a dedicated `EMI / GNSS / POWER PLACEMENT REVIEW`. Review GNSS and ESP32 RF paths/keep-outs, converters/inductors/switch nodes, CAN and USB paths, microSD, display/shift/sound cables, high-current returns, ground continuity, enclosure cable routing and common-mode radiation risk.
+
+Do not wait for prototype failure before considering these coupling paths.
+
+### Testability
+
+Keep architecture and firmware testable through deterministic clocks, recorded replay, emulation, synthetic/provenance-controlled fixtures and future HIL where practical. BMW E81/N43 may be the first real fixture but must not become a special-case test architecture.
+
+### Compliance language
+
+Never describe host, bench, vehicle, road or track testing as CISPR, ISO, UNECE, automotive-qualification or other regulatory compliance. Such claims require an applicable plan and qualified evidence.
 
 ## Manufacturing validation
 

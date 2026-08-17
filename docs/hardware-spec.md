@@ -2,6 +2,8 @@
 
 This is the Task 4.7 automotive-electrical, component and interface research freeze, not an approved schematic, PCB release, or automotive-safety claim. Exact ordering codes, qualification, exceptions, and source evidence are in [`component-freeze.md`](component-freeze.md); circuit boundaries are in [`schematic-architecture.md`](schematic-architecture.md).
 
+Task 5A status: **BLOCKED before KiCad project or schematic-sheet creation**; no Task 5A schematic capture, ERC run or review PDF was produced. The capture gate remains closed because the LM74502-Q1 guaranteed UV thresholds have no overlap between 6 V operation and USB/vehicle crossover, its guaranteed OV thresholds have no overlap between 18 V operation and cutoff by 20 V, SM8SF24CA-Q has 24 V `VRWM` against the required +26 V/60 s jump-start, the 2 A fuse needs a defined low-voltage/hot load policy or must be reopened, DMT6007LFGQ-7 negative-pulse stress remains unresolved, and AUX5 plus the damped input filter still require qualification. See [`task5a-power-calculations.md`](task5a-power-calculations.md).
+
 Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CAN channel, protected power and parked wake/sleep, ESP32-S3, onboard GNSS, microSD, USB-C, BLE, an interchangeable external display, a short-cable shift light, onboard audible alarm, MODE input, status indication, and debug. TPMS, tire-temperature sensing, IMUs, analog sensor hubs, external sensor networks, and a second CAN channel are explicitly outside this revision.
 
 ## Processing and storage
@@ -42,11 +44,11 @@ Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CA
 
 ## Automotive input and ground
 
-- Freeze `VBAT_OBD_RAW -> 0437002A -> SM8SF24CA-Q -> LM74502QDDFRQ1 + 2×DMT6007LFGQ-7 -> damped post-switch filter -> VEHICLE_PROTECTED`. The non-H controller is a documented change for calculable inrush control.
-- Freeze 6.0 V nominal UV falling, 18.0 V nominal OV and a measured ≤24 V `VEHICLE_PROTECTED` requirement. Full operation is 6–18 V; +26 V/60 s jump and +38 V suppressed load dump survive by disconnect; −14 V/60 s reverse survives without normal fuse opening. Severe unsuppressed load dump is outside the v1 guarantee.
+- The Task 4.7 historical candidate chain was `VBAT_OBD_RAW -> 0437002A -> SM8SF24CA-Q -> LM74502QDDFRQ1 + 2×DMT6007LFGQ-7 -> damped post-switch filter -> VEHICLE_PROTECTED`. Task 5A reopens its threshold implementation, TVS/FET/fuse coordination and exact filter population; it is not approved for capture.
+- Retain 6–18 V full operation, +26 V/60 s jump survival, +38 V suppressed-load-dump survival, −14 V/60 s reverse survival and measured ≤24 V `VEHICLE_PROTECTED` as `DESIGN_REQUIREMENT` inputs. The frozen LM74502-Q1/SM8SF24CA-Q implementation cannot meet all of them with the required USB crossover, so no exact UV/OV values or substitute parts are approved. Severe unsuppressed load dump remains outside the v1 guarantee.
 - Freeze controlled reset/automatic recovery during crank; full ride-through is not required.
 - OBD4 and OBD5 join once at entry into one continuous `POWER_GND`; high-current/ESD return geometry is controlled without split ground planes.
-- Freeze post-switch damped C-L-C topology and voltage/current envelopes; exact L/C/R, UV/OV, `Cdvdt`, fuse/SOA and EMI values remain Task 5 calculations.
+- Retain a damped post-switch filter as the architectural direction, but reopen exact L/C/R, leakage, UV/OV, `Cdvdt`, fuse/SOA and EMI values pending the Task 5A decisions.
 
 ## Expansion and debug
 
@@ -59,7 +61,7 @@ Telemetry v1 is limited to a 12 V passenger-car OBD device with one Classical CA
 
 - RejsaCAN v3.4 reference outline is approximately 31.50 mm × 49.53 mm (`CALCULATED` from repository PCB edge coordinates) with an antenna-end notch; Telemetry v1 dimensions remain `TBD` and will grow for GNSS/RF and connectors.
 - RF connector/antenna cable, OBD strain relief, display cable, enclosure, ventilation, ingress, vibration, and service access are TBD.
-- Connector mechanics, enclosure temperature, exact purchased-standard/OEM test severities, ESD/EMC setup, and product qualification targets remain validation blockers; the Task 4.7 design envelope itself is frozen.
+- Connector mechanics, enclosure temperature, exact purchased-standard/OEM test severities, ESD/EMC setup, and product qualification targets remain validation blockers. Unaffected Task 4.7 system requirements remain inputs, while the Task 5A vehicle-input and AUX5 implementation decisions above are explicitly reopened.
 
 ## Product-interface implications
 

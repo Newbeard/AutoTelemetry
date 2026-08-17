@@ -1,6 +1,6 @@
 # Telemetry v1 power budget
 
-Status: Task 4.7 electrical/protection-freeze budget, 2026-08-17. It is not a released schematic or an automotive-compliance claim.
+Status: Task 4.7 electrical/protection-freeze budget, 2026-08-17. Task 5A is **BLOCKED** at the schematic-capture gate; see [`task5a-power-calculations.md`](task5a-power-calculations.md). This is not a released schematic or an automotive-compliance claim.
 
 ## Evidence convention
 
@@ -66,6 +66,8 @@ AUX5 rating ≥2.0 A, current limited, normally off      [DESIGN_REQUIREMENT]
 
 The 5 V display allocation is not added when a module uses the 3.3 V display allocation. Firmware must not enable incompatible display supplies; hardware keying or population options must prevent simultaneous connection.
 
+Task 5A's thermal screen qualifies the AUX5 numbers: 1.30 A is conditionally plausible only pending measured converter efficiency and demonstrated `RθJA ≤50 °C/W`; 1.625 A must be managed/short-duration pending proof; and 2 A continuous at 85 °C is not defensible. The 2 A value is the selected silicon class, not an established continuous hot-load capability. See [`task5a-power-calculations.md`](task5a-power-calculations.md).
+
 ### Individual switched branches
 
 | Branch | Peak sum | Margin calculation | Resulting requirement |
@@ -85,9 +87,10 @@ Recommended state: protected vehicle input present; MAIN_3V3 remains enabled; ES
 
 | Always-powered item | 12 V input contribution | Basis |
 |---|---:|---|
-| LM74502-Q1 reverse/OV controller | 110.0 µA | `VERIFIED_DATASHEET` maximum operating current |
+| LM74502-Q1 reverse/OV controller | 110.0 µA | Conservative `DESIGN_REQUIREMENT` allocation; TI publishes 65 µA maximum operating quiescent current |
 | SM8SF24CA-Q input TVS | 10.0 µA | `VERIFIED_DATASHEET` maximum at 24 V/25 °C, conservatively allocated at 12 V; hot leakage unverified |
 | MAIN buck own IQ | 5.0 µA | `DESIGN_REQUIREMENT`; LMQ66420-Q1 typical is 1.5 µA, guaranteed implementation maximum unresolved |
+| Disabled AUX5 buck shutdown current | 1.0 µA | `VERIFIED_DATASHEET`: LMQ66420-Q1 maximum shutdown input current |
 | UV/OV dividers, vehicle detector and gated ADC sensing | 25.0 µA | `DESIGN_REQUIREMENT` combined at 12 V |
 | TCAN3404-Q1 standby | 7.8 µA | `17 µA×3.3/(12×0.60)` (`CALCULATED`) |
 | ESP32 module branch | 22.9 µA | `50 µA×3.3/(12×0.60)` (`DESIGN_REQUIREMENT` + `CALCULATED`) |
@@ -98,19 +101,21 @@ Recommended state: protected vehicle input present; MAIN_3V3 remains enabled; ES
 | USB PMEG/source-isolation path | 5.0 µA | `ASSUMPTION`; PMEG6030EP-Q is 5 µA typical at 10 V/25 °C and must be measured hot |
 | CAN/USB/other signal ESD leakage | 5.0 µA | `DESIGN_REQUIREMENT` |
 | Miscellaneous leakage | 10.0 µA | `DESIGN_REQUIREMENT` |
-| GNSS V_BCKP, SD, display, AUX5, SHIFT5, sound, visible LEDs | 0 µA intended load | Off; residual switch leakage is included above |
-| **Subtotal** | **211.54 µA** | `CALCULATED` |
-| **100% uncertainty/temperature allowance** | **211.54 µA** | `DESIGN_REQUIREMENT` margin |
-| **Expected design envelope at 12 V** | **≤423.08 µA (0.424 mA)** | `CALCULATED` |
+| GNSS V_BCKP, SD, display, AUX5 loads, SHIFT5, sound, visible LEDs | 0 µA intended load | Off; residual switch leakage is included above |
+| **Subtotal** | **212.54 µA** | `CALCULATED` |
+| **100% uncertainty/temperature allowance** | **212.54 µA** | `DESIGN_REQUIREMENT` margin |
+| **Expected design envelope at 12 V** | **≤425.08 µA (0.425 mA)** | `CALCULATED` |
 
-The new value is 0.053 mA above the Task 4.6 estimate of 0.371 mA (`CALCULATED`, rounded). Against the allocations:
+The baseline value is 0.054 mA above the Task 4.6 estimate of 0.371 mA (`CALCULATED`, rounded). Against the allocations:
 
-- `<1.0 mA` over the parked voltage/temperature range: **PASS on paper**, 0.576 mA margin; not verified;
-- `<0.50 mA` at 12 V/25 °C: **PASS on paper**, 0.076 mA margin; not verified.
+- `<1.0 mA` over the parked voltage/temperature range: **PASS on paper**, 0.575 mA margin; not verified;
+- `<0.50 mA` at 12 V/25 °C: **PASS on paper**, 0.075 mA margin; not verified.
+
+The conditional 100 µF damping-capacitor candidate has 50 µA maximum leakage. If populated, the same doubled-envelope method gives `2×(212.54+50)=525.08 µA (0.525 mA)`: the <1.0 mA target still passes on paper, but the <0.50 mA stretch target fails by 25.08 µA. A lower-leakage damping solution or a requirement change is therefore a Task 5A decision gate.
 
 The stretch margin is small. The PMEG Schottky leakage rises strongly with temperature, while the buck maximum IQ, ESP module/PSRAM sleep current, divider network and complete board leakage remain unresolved. Complete-board measurement over voltage, temperature, wake duty cycle and post-drive shutdown time is the release evidence.
 
-For scale only, 0.424 mA draws `0.424 mA×24 h×30 = 0.305 Ah` in 30 days (`CALCULATED`), ignoring battery self-discharge, temperature and vehicle effects. This is not a safe-storage-duration claim.
+For scale only, 0.425 mA draws `0.425 mA×24 h×30 = 0.306 Ah` in 30 days (`CALCULATED`, rounded), ignoring battery self-discharge, temperature and vehicle effects. This is not a safe-storage-duration claim.
 
 ## Architecture comparison
 
@@ -126,19 +131,19 @@ For scale only, 0.424 mA draws `0.424 mA×24 h×30 = 0.305 Ah` in 30 days (`CALC
 | Sleep/startup | ESP/CAN rail-on possible | More sequencing and back-power paths | Explicit ESP/CAN wake domain, staged peripheral startup and current limiting |
 | Manufacturability | Simple | More converters/capacitors | More nets/test points, but clearer validation and configuration |
 
-**Recommendation:** Architecture C, implemented as a hybrid rail-on system: protected battery/USB source OR → low-IQ 2 A automotive 3.3 V buck for ESP32/CAN, individually switched GNSS/SD/display branches, and a separately switched 2 A 5 V auxiliary converter for external display/shift-light/buzzer needs. This preserves reliable CAN/timer/button wake without a second wake MCU and still meets the revised 0.424 mA parked-current targets on paper.
+**Recommendation:** Architecture C remains the system direction: protected battery/USB source OR → low-IQ 2 A automotive 3.3 V buck for ESP32/CAN, individually switched GNSS/SD/display branches, and a separately switched 2 A-class 5 V auxiliary converter for external display/shift-light/buzzer needs. The exact AUX5 regulator/load policy is reopened by Task 5A. The 0.425 mA baseline parked envelope passes both targets on paper, but the conditional damping capacitor raises it to 0.525 mA and blocks the stretch target pending a lower-leakage solution or requirement change.
 
-## Regulator comparison and freeze
+## Regulator comparison and Task 5A gate
 
 | Candidate | Qualification / input / output | IQ and shutdown | Package / status | Advantages | Disadvantages / unresolved |
 |---|---|---|---|---|---|
-| TI LMQ66420-Q1 | AEC-Q100; 3–36 V operating, 42 V transient; 2 A; fixed/adjustable 3.3/5 V | 1.5 µA typical IQ; 250 nA typical shutdown | MC3 QFN, active; availability checked in Task 4 | **Frozen silicon for MAIN_3V3 and AUX5**; low parked IQ, 2 A, low-EMI features | Exact feedback/passive values, effective capacitance, thermal design and clamped transient margin remain schematic calculations |
+| TI LMQ66420-Q1 | AEC-Q100; 3–36 V operating, 42 V transient; 2 A; fixed/adjustable 3.3/5 V | 1.5 µA typical IQ; 250 nA typical shutdown | MC3/MC5 QFN, active; availability must be rechecked | **Frozen silicon for MAIN_3V3; AUX5 reopened by Task 5A**; low parked IQ and low-EMI features | Exact passives remain open; MC5 public data does not prove the required continuous hot-load capability |
 | TI LM53602-Q1 | AEC-Q100; 3.5–36 V, 42 V transient; 2 A; 3.3/5 V | 24 µA no-load typical; 1.7 µA shutdown typical | VQFN; active; distributor availability not assessed | Mature automotive family, 2.1 MHz | Higher rail-on IQ; minimum VIN less favorable in crank |
 | Infineon TLS4120D0EP V33 | Automotive; 3.7–40 V; 3.3 V, 2 A | <31 µA stated IQ | exposed-pad package; active; distributor availability not assessed | 40 V input and 2 A | Higher IQ; input minimum and transient margin must be reconciled |
 | ADI MAX20006 | AEC-Q100; 3.5–36 V; 4/6/8 A family | 25 µA no-load typical | TQFN; active; distributor availability not assessed | High load margin, 40 V load-dump-tolerant family | Oversized, more area/cost and higher IQ for this budget |
 | TI TPS7B82-Q1 (AON-only comparator) | AEC-Q100; 3–40 V, 45 V transient; 300 mA LDO | 2.7 µA typical / 5 µA max light-load; 300 nA shutdown | HVSSOP/WSON; active; distributor availability not assessed | Simple very-low-IQ small AON rail | Not suitable as active main rail: at 12 V to 3.3 V and 0.3 A it would dissipate 2.61 W (`CALCULATED`) |
 
-Primary sources are listed below. LMQ66420MC3RXBRQ1 silicon is frozen for both converters. TI Table 8-5 provides a 2.2 µH, 4.7 µF input, 1 µF VCC, and two 22 µF nominal output-capacitor starting point; effective capacitance ≥40 µF, feedback, ripple, loss, stability, thermal performance, pulse headroom, and exact passive order codes remain schematic-release calculations.
+Primary sources are listed below. LMQ66420MC3RXBRQ1 remains frozen for MAIN_3V3; LMQ66420MC5RXBRQ1 is reopened for AUX5 until the continuous/managed load requirement and thermal proof are approved. TI Table 8-5 provides a 2.2 µH, 4.7 µF input, 1 µF VCC, and two 22 µF nominal output-capacitor starting point; effective capacitance ≥40 µF, feedback, ripple, loss, stability, thermal performance, pulse headroom, and exact passive order codes remain schematic-release calculations.
 
 ## Primary sources
 

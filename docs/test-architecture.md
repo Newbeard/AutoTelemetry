@@ -1,6 +1,6 @@
 # Product test architecture
 
-Status: Task 4.7 verification architecture. It defines evidence and fixture boundaries, not implemented tests or released pass limits.
+Status: Task 5A-DOC validation architecture amendment, 2026-08-17. It defines evidence and fixture boundaries, not implemented tests, measurements or released pass limits.
 
 ## Principles
 
@@ -10,6 +10,22 @@ Status: Task 4.7 verification architecture. It defines evidence and fixture boun
 - A passing software replay does not establish electrical, RF, EMC, thermal, automotive, or vehicle safety compliance.
 - Every released vehicle profile, protocol revision, configuration migration, enclosure, and hardware revision has traceable compatibility evidence.
 - Use [`test-reference-architecture.md`](test-reference-architecture.md) for the audited emulator/tool matrix, fixture ownership and staged host-to-HIL topology.
+- Use [system-validation-plan.md](system-validation-plan.md) for staged procedures, combined-interference scope, instrumentation categories and future result records.
+
+## Validation stage gate
+
+~~~text
+host/software
+  -> bench
+  -> vehicle stationary
+  -> road
+  -> track/slalom stress
+  -> professional validation where applicable
+~~~
+
+The stages complement each other. Bench success does not establish vehicle or track performance; road success does not replace track combined-load stress; functional testing does not establish EMC/regulatory compliance.
+
+Bench validation should make power, CAN/OBD, GNSS, BLE/Wi-Fi, display, shift-light, sounder, SD, sleep/wake, faults and interference repeatable without requiring the physical vehicle for every case.
 
 ## Test layers
 
@@ -51,6 +67,14 @@ Status: Task 4.7 verification architecture. It defines evidence and fixture boun
 
 The detailed safe sequence, nodes and acceptance cautions are in [`input-protection-architecture.md`](input-protection-architecture.md). No destructive test is authorized by this plan.
 
+## Combined interference and diagnostics gate
+
+`FULL_LOAD_INTERFERENCE_TEST` is mandatory for a prototype/release validation claim. It combines the highest permitted ten-pixel shift-light pattern, TRACK sounder output, continuous SD writes, active display, BLE stream, target-rate GNSS and representative CAN traffic, plus diagnostic polling when enabled/safe. Wi-Fi configuration traffic is tested separately and in combination where meaningful.
+
+Controlled A/B cases compare each individual stressor and the combined case against a baseline. Required evidence covers rail integrity, resets/brownouts/watchdogs, CAN drops/errors/bus-off/recovery, GNSS quality/continuity, BLE/Wi-Fi connection health, SD/logging errors, display corruption and task/queue health.
+
+Runtime diagnostics reserve meaningful CAN, GNSS, BLE, Wi-Fi, SD/logger and system counters/state. Fault-injection tests verify that optional subsystem failures and noisy shift-light/sound operation cannot stop or destabilize unrelated acquisition and outputs. Detailed metric lists live in [system-validation-plan.md](system-validation-plan.md).
+
 ## Repository and fixture model
 
 ```text
@@ -88,6 +112,9 @@ Tests use an injectable monotonic clock and explicit scheduler seeds. Acceptance
 - Firmware entry requires unit, core-contract, profile-schema, config-migration, and protocol compatibility gates.
 - A vehicle profile cannot be marked supported without qualification evidence.
 - Hardware release requires separately approved ERC/DRC, BOM, electrical, RF, mechanical, and manufacturing reviews.
+- A prototype revision cannot be marked validated without the applicable staged evidence and `FULL_LOAD_INTERFERENCE_TEST`.
+- Final PCB routing/manufacturing release requires an `EMI / GNSS / POWER PLACEMENT REVIEW`.
+- Serious commercial release planning separately evaluates professional transient, ESD, emissions, immunity and environmental evidence.
 - Failures must identify the artifact revision, fixture, seed, configuration, and platform sufficiently for reproduction.
 
 ## Unresolved inputs
