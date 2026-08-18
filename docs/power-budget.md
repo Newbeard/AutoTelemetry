@@ -1,6 +1,68 @@
 # Telemetry v1 power budget
 
-Status: Task 4.7 electrical/protection-freeze budget, 2026-08-17. Task 5A is **BLOCKED** at the schematic-capture gate; see [`task5a-power-calculations.md`](task5a-power-calculations.md). This is not a released schematic or an automotive-compliance claim.
+Status: Task 5A.1 corrected budget, 2026-08-17. The authoritative derivation
+and release gates are in
+[`task5a1-power-architecture.md`](task5a1-power-architecture.md). This is not a
+released schematic, implemented load policy, measurement, or compliance claim.
+
+## Current Task 5A.1 budget
+
+The old 12.458 W envelope is superseded because it summed mutually exclusive
+display rails and treated sizing margins as loads.
+
+The “vehicle 3.3 V bucket” below is the complete MC3 output and includes the
+direct vehicle-only TCAN branch. Physical muxed `MAIN_3V3` excludes TCAN; do
+not copy the whole bucket into a USB-only budget.
+
+| Mode | Vehicle 3.3 V bucket | AUX5 | Total output | Contract |
+|---|---:|---:|---:|---|
+| WAKE | 0.42306 W | 0 W | 0.42306 W | event qualification |
+| CORE / LOW-VOLTAGE SHED | 0.65406 W | 0 W | 0.65406 W | continuous core |
+| STREET | 0.98406 W | 2.80005 W | 3.78411 W | continuous |
+| TRACK | 0.98406 W | 4.60005 W | 5.58411 W | continuous |
+| MAX | 2.47500 W | 5.80005 W | **8.27505 W** | <=10 s, <=25% rolling-60-s duty |
+
+The separate 3.3 V-display capacity case remains 1.050 A actual and 1.313 A
+with 25% sizing margin. The AUX capacity calculation is
+`1.16001 A x 1.25 = 1.450 A`; 1.450 A is not a continuous load.
+
+Using the explicit, provisional efficiency model in the authoritative record:
+
+| Mode | 6 V | 8 V | 10 V | 12 V | 14.4 V | 18 V |
+|---|---:|---:|---:|---:|---:|---:|
+| CORE / SHED | 0.1211 A | 0.0898 A | 0.0711 A | 0.0592 A | 0.0499 A | 0.0404 A |
+| STREET | 0.7125 A | 0.5241 A | 0.4147 A | 0.3428 A | 0.2876 A | 0.2336 A |
+| TRACK | 1.0535 A | 0.7741 A | 0.6125 A | 0.5058 A | 0.4242 A | 0.3447 A |
+| MAX, stress arithmetic below 10 V | 1.5568 A | 1.1455 A | 0.9064 A | 0.7496 A | 0.6291 A | 0.5108 A |
+
+The conservative sensitivity case is 0.9545 A for permitted MAX at 10 V and
+0.5326 A for TRACK at 12 V. Combined with low-voltage shedding, this supports
+conditional retention of the 2 A `0437002.WRA`; fuse time-current, hot
+derating, inrush, interrupt and fault-energy testing remain mandatory.
+
+The corrected 12 V parked tree is:
+
+| Group | 12 V input allocation |
+|---|---:|
+| LM74720 plus OV divider | 57.814 µA |
+| TVS pair, both buck states and vehicle sensing | 23.000 µA |
+| converted TCAN/ESP/TCA/LP5814/wake loads | 40.040 µA |
+| TPS2116/priority, disabled switches and `EEEFK0J101AV` MAIN bulk | 7.108 µA |
+| filter/support MLCC and hybrid leakage | 61.636 µA |
+| signal ESD and residual miscellaneous | 14.415 µA |
+| **conservative subtotal** | **204.013 µA** |
+| **100% design allowance** | **204.013 µA** |
+| **paper envelope** | **408.026 µA = 0.408 mA** |
+
+Across the 6/8/10/12/14.4/18 V model, doubled parked current is
+0.476/0.438/0.419/0.408/0.402/0.400 mA. It passes the <1.0 mA requirement
+and <0.50 mA stretch target on paper only.
+
+## Superseded Task 4.7 and Task 5A budget record
+
+Everything below this heading is retained as calculation provenance. Old load
+sums, parked totals, controller/TVS parts and recommendations are not current
+requirements when they conflict with Task 5A.1.
 
 ## Evidence convention
 
@@ -117,7 +179,7 @@ The stretch margin is small. The PMEG Schottky leakage rises strongly with tempe
 
 For scale only, 0.425 mA draws `0.425 mA×24 h×30 = 0.306 Ah` in 30 days (`CALCULATED`, rounded), ignoring battery self-discharge, temperature and vehicle effects. This is not a safe-storage-duration claim.
 
-## Architecture comparison
+## Historical architecture comparison (superseded by Task 5A.1)
 
 | Criterion | A: battery → 3.3 V | B: battery → 5 V → 3.3 V | C: always-on 3.3 V logic/CAN + switched peripheral rails |
 |---|---|---|---|
@@ -131,7 +193,7 @@ For scale only, 0.425 mA draws `0.425 mA×24 h×30 = 0.306 Ah` in 30 days (`CALC
 | Sleep/startup | ESP/CAN rail-on possible | More sequencing and back-power paths | Explicit ESP/CAN wake domain, staged peripheral startup and current limiting |
 | Manufacturability | Simple | More converters/capacitors | More nets/test points, but clearer validation and configuration |
 
-**Recommendation:** Architecture C remains the system direction: protected battery/USB source OR → low-IQ 2 A automotive 3.3 V buck for ESP32/CAN, individually switched GNSS/SD/display branches, and a separately switched 2 A-class 5 V auxiliary converter for external display/shift-light/buzzer needs. The exact AUX5 regulator/load policy is reopened by Task 5A. The 0.425 mA baseline parked envelope passes both targets on paper, but the conditional damping capacitor raises it to 0.525 mA and blocks the stretch target pending a lower-leakage solution or requirement change.
+**Historical recommendation (superseded by Task 5A.1; do not use for capture):** Architecture C remained the system direction at that review point: protected battery/USB source OR → low-IQ 2 A automotive 3.3 V buck for ESP32/CAN, individually switched GNSS/SD/display branches, and a separately switched 2 A-class 5 V auxiliary converter for external display/shift-light/buzzer needs. Its AUX5 and parked-current conclusions are retained only as decision history; the corrected architecture and budgets are in [`task5a1-power-architecture.md`](task5a1-power-architecture.md).
 
 ## Regulator comparison and Task 5A gate
 

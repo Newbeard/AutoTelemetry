@@ -1,8 +1,14 @@
 # Task 5A power calculations and schematic-capture gate
 
-Status: **BLOCKED**, 2026-08-17. Task 5A stopped before KiCad project creation because primary-source calculations invalidate several frozen assumptions. No schematic value or substitute component in this document is approved for capture.
+Status: **SUPERSEDED BLOCKER EVIDENCE**, 2026-08-17. Task 5A correctly stopped
+before KiCad project creation because primary-source calculations invalidated
+several frozen assumptions. Task 5A.1 resolves the active architecture and
+requirements in
+[task5a1-power-architecture.md](task5a1-power-architecture.md). The material
+below remains the audit trail for the rejected Task 4.7 circuit and must not be
+used as the current capture specification.
 
-## Result
+## Historical Task 5A result
 
 The frozen vehicle-input chain cannot simultaneously satisfy its present 6–18 V operation, USB source-crossover, +26 V/60 s jump-start, ≤20 V overvoltage-cutoff, full-load and parked-current requirements. Per the Task 5A stop rule, affected schematic capture, ERC and PDF export were not performed.
 
@@ -367,7 +373,7 @@ The second result passes the <1 mA target by 0.475 mA but fails the <0.5 mA stre
 - Diodes Incorporated, [DMT6007LFGQ data sheet DS40969](https://www.diodes.com/datasheet/download/DMT6007LFGQ.pdf), ratings, pinout and SOA.
 - Diodes Incorporated, [AP74701Q data sheet](https://www.diodes.com/datasheet/download/AP74701Q.pdf), MOSFET SOA application example.
 - Bourns, [SM8SF-Q data sheet](https://www.bourns.com/docs/Product-Datasheets/SM8SF-Q.pdf), electrical table and pulse graphs.
-- Littelfuse, [437A data sheet](https://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_437a_datasheet.pdf.pdf), electrical/opening data and temperature re-rating.
+- Littelfuse, [437A data sheet](https://www.littelfuse.com/assetdocs/littelfuse-fuse-437a-datasheet?assetguid=82c80a59-a4b9-4748-920b-3e2b65b813a9), electrical/opening data and temperature re-rating.
 - Texas Instruments, [LMQ66420-Q1 data sheet](https://www.ti.com/lit/ds/symlink/lmq66420-q1.pdf), electrical limits, Table 8-5, component selection and thermal information.
 - Texas Instruments, [AN-2162 / SNVA489](https://www.ti.com/lit/an/snva489/snva489.pdf), [SNVA801](https://www.ti.com/lit/an/snva801/snva801.pdf), [SNVA538](https://www.ti.com/lit/an/snva538/snva538.pdf) and [SNVA810](https://www.ti.com/lit/an/snva810/snva810.pdf), damped input-filter guidance.
 - Coilcraft, [XEL4030-222](https://www.coilcraft.com/en-us/products/power/high-voltage-inductors/xel/xel4030/xel4030-222/) manufacturer data.

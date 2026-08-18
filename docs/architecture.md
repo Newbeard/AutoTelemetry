@@ -1,6 +1,6 @@
 # Universal OBD/CAN + GNSS Telemetry Gateway architecture
 
-Status: Task 5A-DOC validation amendment, 2026-08-17. This document defines boundaries and responsibilities, not firmware tasks, wire formats, schemas, code or hardware selection.
+Status: Task 5A.1 conditional prototype/capture re-freeze, 2026-08-17. Product/software boundaries remain architectural; the selected power partition below is controlled by [task5a1-power-architecture.md](task5a1-power-architecture.md) and remains conditional on its prototype gates. No compliance claim is made.
 
 ## Product and monorepo boundary
 
@@ -219,9 +219,24 @@ Tire pressure, tire temperature and left-to-right tread-temperature arrays are f
 
 ## Hardware partition and states
 
-The historical pre-schematic partition remains protected/source-isolated OBD and USB input, low-IQ MAIN_3V3 for ESP32/TCAN, independent GNSS/SD/display switches and normally-off AUX5. Task 5A keeps the vehicle-input implementation, AUX5 continuous-load/regulator decision and input filter blocked/reopened; authoritative evidence is in `task5a-power-calculations.md`. This validation amendment changes no GPIO, rail, CAN, RF, USB or power-component decision.
+Task 5A.1 conditionally re-freezes this vehicle-input chain for prototype capture:
 
-Software power states remain `PARKED/SLEEP`, `WAKE`, `ACTIVE`, `SHUTDOWN_PENDING`, and `USB_DEBUG`. CAN traffic plus profile/policy is stronger activity evidence than vehicle voltage alone.
+```text
+OBD pin 16
+  -> 0437002.WRA 2 A fuse
+  -> VBAT_FUSED_CLAMPED
+     -> shunt common-anode SM15T47AY + SM15T33AY pair -> POWER_GND
+  -> LM74720QDRRRQ1 reverse-blocking controller
+  -> 2 x STL125N10F8AG 100 V back-to-back N-MOSFETs
+  -> characterized damped input filter
+  -> vehicle regulators and vehicle-only CAN/AUX domains
+```
+
+The OV network must be tolerance-bounded for no static trip through 18 V, a rising-input OV/PD-low command no later than 25.531 V and therefore before 26 V, and reconnect eligibility by 18 V. Completed disconnect/reconnect, dynamic downstream peak and timing remain capture gates. The older ≤20 V trip and `VEHICLE_PROTECTED` ≤24 V targets are superseded. The 2 A fuse, asymmetric clamp, MOSFET VDS/SOA, controller stress, inrush and filter remain subject to the exact analytical and prototype gates in [task5a1-power-architecture.md](task5a1-power-architecture.md); conditional capture status is not transient qualification.
+
+`LMQ66420MC3RXBRQ1` is frozen as the vehicle converter producing `VEH_3V3`. USB uses its own `TPS62162QDSGRQ1` converter to produce `USB_3V3`; `TPS2116DRLR` selects the two regulated inputs and supplies the `MAIN_3V3` core domain. USB cannot power the vehicle CAN or AUX5 domains. TPS2116 is a catalog, non-AEC part whose published electrical limits used here extend through 105 °C, so board-level environmental qualification or an automotive replacement remains a production gate. `LMQ66420MC5RXBRQ1` remains a conditional vehicle-only AUX5 choice pending rail thermal and load-step evidence. The corrected maximum-load total is 8.27505 W; the historical 12.458 W aggregate is superseded.
+
+Software power states remain `PARKED/SLEEP`, `WAKE`, `ACTIVE`, `SHUTDOWN_PENDING`, and `USB_DEBUG`. Full-system operation is not allowed throughout 6–18 V. MAX is limited to ≤10 s and ≤25% duty in any rolling 60 s where permitted. Below 10.0 V, MAX, full-white diagnostics and Wi-Fi are prohibited; below 9.5 V, request logger flush and stop starting optional work; after less than 9.0 V persists for 100 ms, shed optional loads and retain controlled core/CAN/wake survival down to 6 V. Restore shed loads only after greater than 10.0 V persists for 2 s. These exact timer/tolerance implementations remain design requirements pending measurement. CAN traffic plus profile/policy remains stronger activity evidence than vehicle voltage alone.
 
 ## Repository ownership
 

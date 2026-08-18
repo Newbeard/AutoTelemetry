@@ -1,6 +1,69 @@
 # Power architecture baseline
 
-Status: reconciled to the Task 4 component freeze, 2026-08-14. Task 5A is **BLOCKED** at the schematic-capture gate; the calculations and decision gates are recorded in [`task5a-power-calculations.md`](task5a-power-calculations.md). Detailed calculations are authoritative in [`power-budget.md`](power-budget.md); exact frozen devices and remaining blockers are in [`component-freeze.md`](component-freeze.md) and [`schematic-architecture.md`](schematic-architecture.md).
+Status: Task 5A.1 **conditionally re-frozen for future prototype schematic
+capture**, 2026-08-17. The authoritative circuit, calculations, requirements
+and remaining release gates are in
+[`task5a1-power-architecture.md`](task5a1-power-architecture.md). No schematic,
+PCB, firmware, measurement or compliance result is implied.
+
+## Current Task 5A.1 baseline
+
+```text
+OBD16 -> 0437002.WRA 2 A fuse
+      -> VBAT_FUSED_CLAMPED
+         +-> common-anode SM15T47AY + SM15T33AY shunt -> POWER_GND
+      -> LM74720QDRRRQ1 + 2 x back-to-back STL125N10F8AG
+      -> damped post-switch filter
+      -> FILTERED_VEHICLE
+         -> LMQ66420MC3RXBRQ1 -> VEH_3V3
+         -> normally-off LMQ66420MC5RXBRQ1 -> AUX5
+
+USB -> TPS2553-Q1 -> TPS62162-Q1 USB_3V3
+VEH_3V3 + USB_3V3 -> TPS2116 -> MAIN_3V3
+VEH_3V3 directly powers TCAN3404-Q1; AUX5 is vehicle-only.
+```
+
+The LM74720 prototype OV divider is `249 kΩ + 249 kΩ` over
+`28.0 kΩ`, all 0.1%. With resistor tolerance and a conservative ±1 µA
+node-leakage envelope, OV rising is 20.690–25.531 V and falling is
+18.815–23.366 V. This guarantees no static trip through 18 V, a reconnect
+command is eligible at 18 V, and the OV/PD-low command occurs before 26 V.
+Completed switching, downstream peak and recovery time remain dynamic gates.
+It deliberately supersedes the incompatible
+18–20 V cutoff and 24 V protected-node requirements.
+
+The actual worst named simultaneous output is 8.27505 W: a 2.475 W complete
+vehicle 3.3 V/MC3 bucket plus 5.80005 W AUX. The bucket includes direct
+vehicle-only CAN current; physical muxed `MAIN_3V3` does not. MAX is allowed
+only at or above 10 V for at most 10 s and 25%
+duty in a rolling 60 s. A low-voltage policy begins an SD flush below 9.5 V,
+sheds AUX/display/shift/sound/Wi-Fi below 9.0 V for 100 ms, and recovers only
+above 10.0 V for 2 s. Those values are design requirements for later firmware,
+not an implementation.
+
+`LMQ66420MC3RXBRQ1` remains frozen for the vehicle 3.3 V source. The
+`LMQ66420MC5RXBRQ1` AUX selection is conditionally frozen for
+0.56001 A STREET, 0.92001 A TRACK, and 1.16001 A managed MAX. The corrected
+parked-current envelope is 0.408 mA at 12 V and 0.476 mA at the modeled 6 V
+worst point, passing both paper targets but still requiring hot board
+measurement.
+
+Both LMQ variants use the exact shared conditional population:
+`XGL5030-222MEC`; two `CGA6P1X7R1N106K250AC` input capacitors; four
+`CGA6P3X7R1E226M250AB` output capacitors plus one DNP; two
+`CGA3E1X7R1C105K080AC` VCC capacitors; and CBOOT DNP. The USB chain uses
+60.4 kΩ ±1% TPS2553 RILIM, the exact TPS62162 population and
+`EEEFK0J101AV` 100 µF at TPS2116 VOUT frozen in the authoritative record.
+Its prototype startup source/cable must advertise and sustain at least
+500 mA at 4.75 V; post-ramp `USB_ENUM` is at most 100 mA `MAIN_3V3`
+(about 82 mA VBUS), not an inrush ceiling or a generic legacy USB 2.0
+pre-enumeration compliance claim.
+
+## Superseded reference and Task 4.7 context
+
+Everything below this heading is retained for provenance. Its old component
+chain, thresholds, load sums and parked-current result are not active design
+instructions when they conflict with Task 5A.1.
 
 ## RejsaCAN v3.4 reference path
 

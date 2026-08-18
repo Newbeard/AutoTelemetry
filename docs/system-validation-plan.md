@@ -1,6 +1,6 @@
 # AutoTelemetry system validation plan
 
-Status: Task 5A-DOC validation architecture amendment, 2026-08-17. This is a controlled plan for future evidence, not a record of executed tests, measurements, certification or regulatory compliance.
+Status: Task 5A.1 conditional prototype/capture re-freeze, 2026-08-17. This is a controlled plan for future evidence, not a record of executed tests, measurements, certification or regulatory compliance.
 
 ## Scope and evidence rules
 
@@ -11,7 +11,7 @@ This plan defines the sequence, observability and record structure for AutoTelem
 - Passing functional tests does not establish EMC, transient, environmental or regulatory compliance.
 - Add numerical PASS/FAIL degradation limits only when a component requirement, measurement capability or prototype baseline supports them.
 - Every result identifies hardware revision, firmware version, profile/configuration, fixture revision, instruments, environment, procedure, raw evidence and reviewer.
-- The unresolved Task 5A power decisions remain controlled by [task5a-power-calculations.md](task5a-power-calculations.md). This plan does not select or change those parts.
+- The authoritative Task 5A.1 power partition, numerical requirements, assumptions, and conditional selections are controlled by [task5a1-power-architecture.md](task5a1-power-architecture.md). Passing internal gates below does not establish automotive qualification or regulatory compliance.
 
 ## Validation flow
 
@@ -89,6 +89,22 @@ current-limited supply and measurement equipment observe power and signals
 
 Bench scenarios should be deterministic and repeatable where practical. The harness documents termination, common ground/isolation, source limits, power sequence and emergency disconnect.
 
+## Task 5A.1 power validation gates
+
+All gates below require retained waveforms, temperatures, currents, fixture configuration, component lots, preconditions, and PASS/FAIL disposition. They apply before the conditional power architecture can be considered prototype-proven:
+
+1. **Exact transient profiles:** reproduce every frozen positive, negative, sustained, and interrupted supply case with its specified amplitude, duration, source impedance, repetition, rise/fall behavior, polarity, temperature, and source-state precondition. Include +26 V/60 s, the exact +38 V suppressed-load-dump source, −14 V/60 s, the +50 V/2 Ω/0.05 ms reference, the −100 V/10 Ω/2 ms reference, and every additional purchased-standard/OEM pulse later controlled by [task5a1-power-architecture.md](task5a1-power-architecture.md). Record both raw input and every affected protected/regulated node.
+2. **TVS electrothermal and fuse coordination:** validate the common-anode `SM15T47AY` + `SM15T33AY` pair for both polarities, including dynamic clamp voltage, forward-leg stress, current and energy sharing, junction-temperature accumulation, cooling/repetition, leakage, and fault aftermath. Coordinate the 2 A fuse using tolerance- and temperature-bounded current, I²t, clearing time, and DC interrupt capability; nominal I²t alone is insufficient.
+3. **Controller/MOSFET VDS, SOA, and overshoot:** measure LM74720QDRRRQ1 A, C, C-to-A, PD, both gates, and both `STL125N10F8AG` devices during normal operation, +26 V, +38 V, +50 V, −14 V, −100 V, cutoff, source crossover, output-precharge/held-output cases, shorts, and recovery. Bound each VDS/VGS, avalanche exposure, transient SOA, dissipation, ringing and layout-induced overshoot with temperature and part tolerances; prove downstream survival through 25.531 V plus measured overshoot.
+4. **OV, inrush, and reverse-current blocking:** demonstrate no OV nuisance trip through 18 V, the rising OV/PD-low command by 25.531 V before 26 V, and reconnect eligibility by 18 V across tolerance and temperature. Separately measure completed isolation/reconnection time, dynamic downstream peak, startup/hot-plug inrush, dV/dt, fuse stress, output discharge/recovery, reverse-battery isolation, and reverse current/back-feed with the output energized from USB.
+5. **Filter impedance, EMI, and DC-bias characterization:** prove the combined direct capacitance remains 9.4–20.68 µF over the controlled 0–25.6 V envelope, then measure or correlate damped-filter impedance across the relevant frequency range and operating states. Include capacitance versus DC bias/temperature/tolerance/aging, ESR/ESL, inductor DCR and saturation, damping-resistor pulse stress, converter negative input impedance/stability, hot plug, conducted/radiated noise observations, and source/harness impedance. This is engineering evidence, not an EMC-compliance test.
+6. **Four-state source injection:** exercise vehicle-only, USB-only, both sources, and neither source through every order while observing TPS2553/TPS62162/TPS2116, `MAIN_3V3`, vehicle-only domains and connector pins. Prove no back-feed, CAN/AUX5 power or source chatter. Test the exact USB population, including 60.4 kΩ RILIM, both TPS62162 capacitors/inductor and the 100 µF TPS2116 VOUT bulk. Require a prototype source/cable that advertises and sustains ≥500 mA at 4.75 V; verify post-ramp `USB_ENUM` ≤100 mA `MAIN_3V3` (about 82 mA VBUS), 350 mA VBUS/400 mA MAIN_3V3 configured ceilings, limiter tolerance, current-limited startup, clamp/RCB behavior, reverse leakage, 105 °C limitation and every handoff/load combination. Do not treat this test as proof of generic legacy USB 2.0 pre-enumeration compliance.
+7. **Hot parked-current budget:** measure complete input current across the parked voltage and temperature matrix, including controller, regulators, mux, CAN standby, MCU sleep, monitors, divider/filter leakage, protection leakage and disabled branches. Compare against the 408.026 µA (0.408 mA) 12 V paper envelope and the 0.476/0.438/0.419/0.408/0.402/0.400 mA 6/8/10/12/14.4/18 V model; verify the <1.0 mA release limit and separately report the <0.50 mA at 12 V/25 °C stretch target.
+8. **Rail thermal and load steps:** validate the complete MC3/`VEH_3V3` bucket and conditional AUX5 at 12/14.4/18 V, 85 °C ambient, STREET/TRACK/MAX duty, startup, load release and simultaneous permitted peaks using the exact shared `XGL5030-222MEC`, CIN/COUT/CVCC and CBOOT-DNP population. Separately exercise the 1.050 A 3.3 V-display MC3 capacity case and decide whether a 105 °C enclosure requirement is needed. Measure effective capacitance, efficiency, dropout, droop/overshoot, ripple, stability, component/junction/board temperatures, recovery, sequencing, current limiting and branch faults. Use 8.27505 W only for the simultaneous aggregate; never add the mutually exclusive display cases.
+9. **Low-voltage state transitions:** prove MAX load is prohibited below 10.0 V, logger flush is requested below 9.5 V, optional loads shed only after less than 9.0 V persists for 100 ms, controlled core/CAN/wake survives at 6 V, and shed loads recover only after greater than 10.0 V persists for 2 s. Sweep and step through thresholds with ripple/noise and source handover while checking timer tolerance, hysteresis, SD integrity, CAN behavior, reset loops and deterministic recovery. Exact timer/tolerance implementation remains a design requirement pending measurement.
+
+Failure or inconclusive evidence at any gate reopens the affected selection; it does not authorize an undocumented threshold, component substitution, or broader operating claim.
+
 ## FULL_LOAD_INTERFERENCE_TEST
 
 FULL_LOAD_INTERFERENCE_TEST is a mandatory prototype/release validation gate. At minimum operate simultaneously:
@@ -161,7 +177,7 @@ Exercise low volume, normal STREET volume, maximum TRACK volume, representative 
 
 ## Power-integrity measurement
 
-Use oscilloscope-based validation on raw/protected vehicle input, MAIN_3V3, AUX5, GNSS rail, SHIFT5 and other sensitive switched rails where useful during startup, shutdown, source transitions, power cycling, load steps, shift-light/sounder activation, SD writes, BLE/Wi-Fi activity and combined stress.
+Use oscilloscope-based validation on raw/protected vehicle input, both regulated inputs to the TPS2116 core mux, the selected core rail, vehicle-only CAN supply, AUX5, GNSS rail, SHIFT5 and other sensitive switched rails where useful during startup, shutdown, source transitions, power cycling, load steps, shift-light/sounder activation, SD writes, BLE/Wi-Fi activity and combined stress.
 
 Look for droop, overshoot, ringing, excessive ripple, oscillation, slow recovery and cross-domain coupling. Exact limits remain tied to later component, interface and prototype requirements.
 

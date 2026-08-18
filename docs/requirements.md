@@ -1,6 +1,6 @@
 # Telemetry v1 requirements
 
-Status: Task 5A-DOC validation amendment, 2026-08-17. Task 5A vehicle-input and power blockers remain unresolved in [schematic-architecture.md](schematic-architecture.md) and [task5a-power-calculations.md](task5a-power-calculations.md). This amendment changes no hardware selection.
+Status: Task 5A.1 conditional prototype/capture re-freeze, 2026-08-17. The authoritative vehicle-input and source-selection decision is [task5a1-power-architecture.md](task5a1-power-architecture.md). Capture remains conditional on its stated calculations, tolerances, prototype gates, and review conditions; this status is not automotive qualification or compliance evidence.
 
 ## Scope and invariants
 
@@ -32,11 +32,12 @@ Status: Task 5A-DOC validation amendment, 2026-08-17. Task 5A vehicle-input and 
 | EXP-01 | Expansion and debug | Expose I2C, UART/debug access, useful spare GPIO, and named test points for CAN-H/L, vehicle input, 3.3 V, GNSS UART, and ground |
 | PWR-01 | Permanent OBD installation | Verify active, transient and complete parked current against [`power-budget.md`](power-budget.md); release limit <1.0 mA, stretch <0.50 mA at 12 V/25 °C (`DESIGN_REQUIREMENT`) |
 | PWR-02 | Wake sources | Rail-on ESP32/CAN standby wake from CAN, timer, MODE, vehicle-voltage hint and USB (`DESIGN_REQUIREMENT`) |
-| PWR-03 | Power domains | LMQ66420MC3RXBRQ1 remains the MAIN_3V3 candidate; the AUX5 regulator/continuous-load requirement remains `REOPENED` by Task 5A; TPS22919-Q1 separately switches GNSS, SD, DISPLAY_3V3, and DISPLAY_5V |
-| PWR-04 | USB source isolation | Support vehicle-only, USB-only, simultaneous and unpowered cases with no back-feed to OBD pin 16 or USB VBUS; tolerance-bounded vehicle UVLO opens above the USB crossover (`DESIGN_REQUIREMENT`) |
-| PWR-05 | Electrical envelope | Full operation at 6–18 V; +26 V/60 s and +38 V suppressed-load-dump-source survival by disconnect; −14 V/60 s reverse survival; `VEHICLE_PROTECTED` ≤24 V in the approved test matrix (`DESIGN_REQUIREMENT`) |
-| PWR-06 | Crank/brownout | Controlled reset and automatic recovery; full crank ride-through is not required; no reboot loop, SD corruption acceptance gap, or unintended CAN transmission (`DESIGN_REQUIREMENT`) |
+| PWR-03 | Power domains | `LMQ66420MC3RXBRQ1` is frozen as the vehicle converter producing `VEH_3V3`; the mux output is `MAIN_3V3`. `LMQ66420MC5RXBRQ1` is conditional for vehicle-only AUX5 pending thermal/load-step proof. Both use the exact shared `XGL5030-222MEC`, CIN/COUT/CVCC and CBOOT-DNP population frozen in `task5a1-power-architecture.md`. TPS22919-Q1 separately switches GNSS, SD, DISPLAY_3V3, and DISPLAY_5V. CAN and AUX5 are vehicle-only domains. |
+| PWR-04 | USB source isolation | Use `VEH_3V3` and USB-derived `USB_3V3`, selected by TPS2116 for `MAIN_3V3`, with no back-feed or USB CAN/AUX5 power. The prototype startup source/cable must advertise and sustain ≥500 mA at 4.75 V. Post-ramp `USB_ENUM` is ≤100 mA `MAIN_3V3` (about 82 mA VBUS), not an inrush ceiling; provisional configured ceilings are 350 mA VBUS steady and 400 mA MAIN_3V3, with MAX prohibited. This contract does not establish generic legacy USB 2.0 pre-enumeration compliance (`DESIGN_REQUIREMENT`). |
+| PWR-05 | Electrical envelope | Full-system operation is not permitted across the entire 6–18 V range. At 6 V, require controlled core/CAN/wake survival only. The vehicle path must have no static OV trip through 18 V, issue the OV/PD-low command on a rising input no later than 25.531 V and therefore before 26 V, and permit reconnect by 18 V. Completed isolation/recovery time and the dynamic downstream peak require model-and-capture acceptance. Verify +26 V/60 s, the exact +38 V suppressed-load-dump source, and −14 V/60 s without damage (`DESIGN_REQUIREMENT`) |
+| PWR-06 | Crank/brownout and load shedding | Permit MAX for ≤10 s and ≤25% duty in any rolling 60 s only at ≥10.0 V; prohibit MAX, full-white diagnostics and Wi-Fi below 10.0 V; request logger flush below 9.5 V; after input remains below 9.0 V for 100 ms, shed nonessential loads and retain controlled core/CAN/wake survival; restore shed loads only after input remains above 10.0 V for 2 s. Avoid reboot loops, SD corruption and unintended CAN transmission. Exact timer/tolerance implementation remains a design requirement pending prototype measurement |
 | PWR-07 | Severe load dump | Severe unsuppressed load dump is outside the v1 guaranteed envelope unless a later purchased-standard/OEM test profile is designed and passed |
+| PWR-08 | Vehicle input implementation | Conditionally select `0437002.WRA` 2 A fuse, common-anode ST `SM15T47AY` + `SM15T33AY`, `LM74720QDRRRQ1`, and two `STL125N10F8AG` 100 V back-to-back N-MOSFETs. Production release requires all analytical and prototype gates in `task5a1-power-architecture.md` |
 | FW-01 | Modular firmware | Independent CAN, OBD-II, ISO-TP, UDS, vehicle profile, GNSS, normalized data core, BLE, display, shift-light, alarms, logger, and power modules |
 
 ## Product and data architecture requirements
@@ -77,7 +78,7 @@ Status: Task 5A-DOC validation amendment, 2026-08-17. Task 5A vehicle-input and 
 
 - Preserve ESP32-S3 GPIO19/GPIO20 for native USB and do not load GPIO0/GPIO3/GPIO45/GPIO46 without a strap analysis.
 - Preserve GPIO42 for JTAG MTMS. microSD CS is GPIO11, not GPIO45; low-speed rail enables and card detect are assigned to TCA6408AQPWRQ1.
-- Validate OBD input against [`automotive-electrical-profile.md`](automotive-electrical-profile.md) and [`input-protection-architecture.md`](input-protection-architecture.md). Telemetry v1 operates from 6–18 V and is not a 24 V commercial-vehicle product. Reference-design pulse conditions remain test inputs, not compliance claims.
+- Validate OBD input against [`task5a1-power-architecture.md`](task5a1-power-architecture.md), [`automotive-electrical-profile.md`](automotive-electrical-profile.md), and [`input-protection-architecture.md`](input-protection-architecture.md). Telemetry v1 is a 12 V passenger-vehicle product. Six volts is a controlled core/CAN/wake survival point, not a full-system operating guarantee; reference-design pulse conditions remain test inputs, not compliance claims.
 - Review CAN protection, common-mode range, ESD, termination, grounding, and non-automotive-qualified reference components.
 - Perform regulator worst-case input/transient, load, thermal, stability, startup, shutdown, reverse-polarity, and back-power analyses.
 - Establish RF keep-outs, controlled-impedance rules, antenna bias filtering/protection, and conducted/radiated noise targets before GNSS layout.
@@ -88,6 +89,7 @@ Status: Task 5A-DOC validation amendment, 2026-08-17. Task 5A vehicle-input and 
 ## Deferred decisions
 
 - Purchased-standard/OEM pulse details, repetition/acceptance classes, exact temperature grade, enclosure/cable environment, severe-unsuppressed-load-dump need, compliance markets, and production volume.
+- Exact implementation tolerances for the 100 ms low-voltage shed timer and 2 s recovery timer remain design requirements pending prototype measurement; their nominal thresholds and durations are not permission to run MAX loads below 10 V.
 - Whether a later hardware-off CAN wake variant is worth its added 5 V/AON sequencing; it is not required for Telemetry v1 unless rail-on measurements fail.
 - Exact physical display connector family and module adapters; the electrical rail/current/cable contract is frozen.
 - Exact onboard 8 Ω speaker, acoustic opening/back volume, sealed acoustic path, and measured in-cabin sound-pressure acceptance limits.
@@ -100,5 +102,8 @@ Status: Task 5A-DOC validation amendment, 2026-08-17. Task 5A vehicle-input and 
 ## Audit disposition
 
 - Earlier 5–24 V wording was a repository/reference claim, not a Telemetry v1 requirement; it is no longer used as a design fact.
+- Earlier full-operation-at-6–18 V wording is superseded: 6 V now means controlled core/CAN/wake survival after load shedding, not unrestricted operation.
+- Earlier OV targets of turn-off at or below 20 V and `VEHICLE_PROTECTED` at or below 24 V are superseded by the Task 5A.1 tolerance-bounded static-command requirements: no trip through 18 V, OV/PD-low command by 25.531 V before 26 V, and reconnect eligibility by 18 V. Completed switching and dynamic peak remain validation gates.
+- The corrected Task 5A.1 maximum-load total is 8.27505 W; the historical 12.458 W aggregate is superseded and must not be used for fuse, regulator, thermal, or low-voltage conclusions.
 - Earlier termination, switched-load capacity, start threshold, display current and peripheral-current wording is superseded by the classified values or explicit unresolved items in `power-budget.md` and `power-wake-review.md`.
 - GPIO numbers are evidence from the v3.4 schematic/pinout and are classified in `interfaces.md`; they are not new electrical calculations.

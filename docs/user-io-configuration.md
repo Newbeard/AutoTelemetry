@@ -1,17 +1,32 @@
 # User I/O, configuration and future Tire Module architecture
 
-Status: Task 5A-DOC validation amendment, 2026-08-17. This document does not authorize firmware, schematic, PCB, flex-layout, CAD, Tire Module electronics or manufacturing work. Task 5A power blockers remain unresolved.
+Status: Task 5A.1 user-I/O/power-domain amendment, 2026-08-17. The vehicle-input, USB-source and AUX5 choices are conditional prototype/capture selections with unresolved bench gates. This document does not authorize firmware, KiCad schematic/PCB work, flex layout, CAD, Tire Module electronics or manufacturing, and makes no compliance claim. See [`task5a1-power-architecture.md`](task5a1-power-architecture.md).
 
 ## Scope and disposition
 
-Telemetry v1 keeps the ESP32-S3, one Classical CAN channel, GPIO map, 1 A protected shift branch and three-wire shift-light contract. The AUX5 regulator/continuous-load requirement remains `REOPENED` by Task 5A. The future AutoTelemetry Tire Module remains a separate product.
+Telemetry v1 keeps the ESP32-S3, one Classical CAN channel, GPIO map, 1 A protected shift-branch fault envelope and three-wire shift-light contract. Task 5A.1 conditionally retains LMQ66420MC5RXBRQ1 for vehicle-only AUX5 under the STREET/TRACK/MAX contracts below; the continuous 2 A interpretation is superseded. The future AutoTelemetry Tire Module remains a separate product.
 
 Task 4.7 resolves two previously proposed Task 4 hardware changes:
 
 - **APPROVED DIRECTION — sounder:** replace the MOSFET-only buzzer path with a 5 V mono class-D amplifier and small speaker. GPIO17 and the AUX5 domain remain unchanged.
 - **APPROVED — status:** replace the one-color expander LED sink with one RGB LED driven by an I2C RGB driver. No direct ESP32 GPIO is added; expander P6 becomes the driver's hardware enable/default-off control.
 
-No other current-v1 hardware change is identified by this task.
+Those Task 4.7 user-I/O decisions remain in force, but their rail behavior is now governed by the Task 5A.1 source partition.
+
+## Task 5A.1 source and visible-output contract
+
+The core rail is now selected after conversion: vehicle `LMQ66420MC3RXBRQ1` produces `VEH_3V3` on TPS2116 VIN1; USB `TPS2553QDBVRQ1` plus fixed-3.3 V `TPS62162QDSGRQ1` produces `USB_3V3` on VIN2; TPS2116 VOUT is `MAIN_3V3`. TCAN3404 VCC and the normally-off AUX5 converter remain physically vehicle-only. A user setting or service UI must never override that isolation.
+
+| Vehicle | USB | Core / user-visible behavior |
+|---|---|---|
+| absent | absent | Device and all indicators/outputs are off |
+| present | absent | Valid vehicle PGOOD gives VIN1 priority; core and CAN are available, while optional display/shift/sound rails follow state and load policy |
+| absent | present | `USB_3V3` powers only the `MAIN_3V3` development/core domain; CAN, AUX5, 5 V display, shift light and sounder remain physically off |
+| present | present | Valid vehicle power retains priority; USB remains isolated and available for data/handoff. Loss of vehicle PGOOD may hand the core to USB, while CAN/AUX5 turn off with the vehicle rail |
+
+TPS2116 reverse-current blocking plus LM74720 vehicle-side reverse blocking provide the intended no-backfeed architecture, but four-state ramps, brownout, handover and abnormal connections remain bench gates. USB presence never authorizes CAN transmission. USB-only uses the exact conditional TPS2553/TPS62162/TPS2116 population and begins with optional loads off. The TPS2553 60.4 kΩ ±1% RILIM screens a 387.2–491.3 mA fault/current-limit population band, not a load contract. The prototype startup source/cable must advertise and sustain ≥500 mA at 4.75 V. After ramp, `USB_ENUM` is ≤100 mA `MAIN_3V3` (about 82 mA VBUS), not an inrush ceiling; the provisional configured ceiling is 350 mA VBUS steady and 400 mA `MAIN_3V3`, with MAX prohibited. This does not establish generic legacy USB 2.0 pre-enumeration compliance; later firmware must honor the actual host/Type-C contract.
+
+AUX5 user modes are constrained as follows: STREET 0.56001 A continuous, TRACK 0.92001 A continuous, and MAX 1.16001 A for no more than 10 s and 25% of any rolling 60 s. A 1.450 A sizing value is not a user-operating mode. Below 10.0 V the power manager prohibits MAX/full-white diagnostics and Wi-Fi; below 9.5 V it starts a bounded SD flush and no new optional work; below 9.0 V for 100 ms it enters `LOW-VOLTAGE SHED`, turning AUX5/display/shift/sound/Wi-Fi off and stopping new SD writes; recovery requires >10.0 V stable for 2 s. UI status must explain shedding without offering an unsafe override. All thresholds and timers remain prototype requirements pending ADC/front-end, crank and SD-flush measurement.
 
 ## External flex shift-light
 
@@ -203,7 +218,7 @@ Frozen architecture:
 5. Validate a complete candidate through the Configuration Manager; risky CAN/diagnostic changes require explicit confirmation and remain inactive until safe activation.
 6. Expire after 10 minutes of inactivity, on explicit exit, vehicle motion/unsafe state, shutdown or update completion; then erase ephemeral session secrets and disable Wi-Fi.
 
-The exact HTTP/TLS certificate and ownership-provisioning model remains a threat-model blocker. A private SoftAP alone is not treated as authorization. During Configuration Mode, CAN/GNSS acquisition and critical local alarms continue with bounded resources; large transfers and display/network work cannot starve them. Wi-Fi/BLE coexistence, GNSS RF desense, AUX rail load and enclosure temperature require measurement. Normal BLE/RaceChrono operation must recover automatically when configuration mode exits.
+The exact HTTP/TLS certificate and ownership-provisioning model remains a threat-model blocker. A private SoftAP alone is not treated as authorization. During vehicle-powered Configuration Mode, available CAN/GNSS acquisition and critical local alarms continue with bounded resources; large transfers and display/network work cannot starve them. In USB-only mode, CAN and AUX5-dependent presentation remain physically unavailable, and optional 3.3 V loads stay within the configured USB budget. Wi-Fi/BLE coexistence, GNSS RF desense, AUX rail load and enclosure temperature require measurement. Normal BLE/RaceChrono operation must recover automatically when configuration mode exits.
 
 The future UI scope is vehicle/profile and CAN mode, safe polling policy, display type/layout/brightness, complete shift-light settings, alarm thresholds/volume/mute, user-safe GNSS settings/diagnostics, RaceChrono status, logging/storage, device versions/diagnostics/reboot/factory reset, and updates. Raw CAN transmission, arbitrary register writes and unbounded engineering values are excluded outside a separately gated service build/mode.
 
@@ -271,6 +286,7 @@ If a later requirement proves two independent CAN buses are necessary, first pre
 
 ## Unresolved verification items
 
+- Exercise every user-visible state through vehicle-only, USB-only, both-source, neither-source, brownout and low-voltage-shed transitions; verify truthful status, no unsafe override, bounded USB load and no accidental CAN/AUX5 power.
 - Obtain and archive the controlled English WS2812B-2020-V6 data sheet; verify exact revision, lot marking, authorized supply, brightness bins, MSL, local capacitor and real maximum/inrush current.
 - Select and acoustically qualify the speaker, back volume/opening, sound spectrum and maximum safe level in the enclosure and representative vehicles.
 - Freeze the physical shift connector and connector-side ESD after mechanical/EMC review.

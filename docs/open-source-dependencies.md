@@ -1,6 +1,8 @@
 # Open-source dependency and reference review
 
-Status: architecture research performed 2026-08-14. This is an engineering inventory, not legal advice or a guarantee. No third-party source was copied or integrated during this task.
+Status: architecture research performed 2026-08-14 and Task 5A.1 power-reference
+audit added 2026-08-17. This is an engineering inventory, not legal advice or
+a guarantee. No third-party source was copied or integrated.
 
 ## Policy
 
@@ -49,6 +51,22 @@ If no explicit license is found, treat copying, modification, linking, redistrib
 | `mdabrowski1990/uds` | MIT | Possible isolated `DEVELOPMENT_TOOL` for host UDS client/server simulation after exact-version review. |
 
 The detailed capability, maintenance and limitation record is in [`test-reference-architecture.md`](test-reference-architecture.md). No third-party code was copied, linked, vendored or executed in Task 4.6. Missing licenses are blockers to reuse, not invitations to infer permission.
+
+## Task 5A.1 power-reference audit
+
+Task 5A.1 used manufacturer data as controlling evidence. The following public
+hardware supplied only architecture and future-test questions:
+
+| Project | Reviewed status/license | Task 5A.1 use and disposition |
+|---|---|---|
+| OpenXC Ford Reference Vehicle Interface | Electrical/mechanical design material is published under CC BY 4.0 | Its diode/TVS/cascaded-LDO and USB approach does not meet the selected +26 V, reverse-blocking or load requirements. Reference only; no material copied |
+| Carloop hardware | GPLv3; project history identifies OpenXC influence | Useful permanent-OBD/open-hardware precedent, but its power chain is not qualification evidence. Copying or deriving hardware would require exact-file and GPL obligation review |
+| comma.ai panda | Public hardware/firmware with license to be verified per exact file/revision before reuse | Useful HIL, CAN-interface and production-test precedent only. No circuit, layout or code copied |
+| RejsaCAN hardware in this fork | No root hardware license established | Reference-only repository evidence. No permission to copy or create a distributable derivative is inferred |
+
+The selected Task 5A.1 circuit was independently derived from the stated
+requirements and primary manufacturer documents. Public maturity does not
+establish electrical suitability, compliance, safety or reuse permission.
 
 ## RaceChrono-specific conclusion
 

@@ -1,141 +1,108 @@
 # AutoTelemetry v1 input and interface protection architecture
 
-Status: Task 4.7 pre-schematic freeze, 2026-08-17. This is the controlled circuit intent for Task 5, not a schematic, layout, tested design, or standards-compliance claim. Exact resistor/capacitor/inductor order codes remain Task 5 calculations where explicitly marked `PROVISIONAL`.
+Status: Task 5A.1 conditional pre-schematic re-freeze, 2026-08-17. This document controls prototype schematic intent only. It is not a tested design, production release, or automotive/standards-compliance claim. The reproducible source data, equations, filter population, source-mux details, tolerances, availability snapshots, and laboratory gates are authoritative in [`task5a1-power-architecture.md`](task5a1-power-architecture.md).
 
-Superseding status: Task 5A is **BLOCKED**. The Task 4.7 architecture remains below as historical context, but its vehicle-input capture authorization is withdrawn. The reopened threshold, TVS, fuse/load, MOSFET negative-pulse and filter-leakage gates are controlled by [`task5a-power-calculations.md`](task5a-power-calculations.md); no affected value or substitute part is approved for capture.
+The earlier Task 5A `BLOCKED` status is superseded for the coordinated vehicle-input and source-selection architecture below. Capture remains conditional on copying the exact Task 5A.1 values and preserving its validation gates; PCB and manufacturing release are not authorized.
 
-## Task 4.7 vehicle-input chain
+## Task 5A.1 conditionally re-frozen vehicle-input chain
 
 ```text
 OBD16 / VBAT_OBD_RAW
-  -> 0437002A, 2 A / 63 V fixed fuse
+  -> 0437002.WRA, 2 A / 63 V fixed fuse
   -> VBAT_FUSED_CLAMPED
-       +-> SM8SF24CA-Q bidirectional TVS -> POWER_GND
-       +-> 100 nF + 1 µF, 100 V ceramic starting envelope -> POWER_GND
-  -> LM74502QDDFRQ1 + 2 × DMT6007LFGQ-7 back-to-back N-MOSFETs
-       UV falling target 6.0 V; OV nominal target 18.0 V
+       +-> SM15T47AY cathode at fused VBAT, anode at TVS_MID
+       +-> SM15T33AY anode at TVS_MID, cathode at POWER_GND
+           (common-anode anti-series pair)
+  -> LM74720QDRRRQ1 + 2 × STL125N10F8AG back-to-back N-MOSFETs
+       OV top = 249 kΩ + 249 kΩ series, bottom = 28.0 kΩ, all 0.1%
   -> VBAT_SWITCHED
-  -> damped C-L-C / pi filter
-  -> VEHICLE_PROTECTED
-  -> SYS_IN source-OR node
-  -> LMQ66420-Q1 MAIN_3V3 and switched AUX5 converters
+  -> damped post-switch filter exactly as controlled by task5a1-power-architecture.md
+  -> FILTERED_VEHICLE
+       +-> LMQ66420MC3RXBRQ1 -> VEH_3V3
+       +-> conditionally frozen LMQ66420MC5RXBRQ1 -> AUX5
 ```
 
-The chain order records the Task 4.7 architecture, but Task 5A `REOPENED` the TVS, threshold implementation, fuse/full-load policy, MOSFET negative-pulse coordination and exact damping network. Conditional inrush calculations do not close those gates.
+The LM74720-Q1 actively drives both N-MOSFETs and provides true reverse-current blocking while enabled. The 100 V FET class is required by the negative-pulse/held-output stress screen. The TVS pair and fuse must be at the connector-entry power region with the shortest practical high-current loop to `POWER_GND`; protected loads must not branch from the connector side of that loop.
 
 ## Reverse-polarity architecture comparison
 
-| Architecture | Loss at 1.298 A reference input | Parked/behavior | Automotive and USB implications | Disposition |
-|---|---:|---|---|---|
-| Series Schottky | `1.298 A × 0.5 V = 0.649 W` (`ASSUMPTION` + `CALCULATED`) | Zero control IQ, but material crank headroom and heat loss | Simple reverse block; high-current diode and thermal copper required | `REJECTED` for main vehicle path |
-| P-channel MOSFET | For an assumed 20 mΩ, `I²R = 33.7 mW` | Low static current | Higher RDS(on), negative-gate/transient control and OV disconnect still required | `REJECTED` versus N-FET controller |
-| N-channel MOSFET plus ideal-diode/reverse controller | Selected pair hot estimate 48.7 mW; calculation below | LM74502 operating IQ is 45 µA typical/65 µA maximum; 110 µA is a conservative design allocation | Low loss, −65 V absolute controller withstand, programmable UV/OV, back-to-back disconnect; does not reverse-block while enabled | `REOPENED` threshold and negative-pulse coordination |
-| Full surge-stopper/eFuse-style unsuppressed front end | Application dependent | Added controller/sense/pass element and SOA/thermal burden | Can support a wider unsuppressed envelope, but materially larger and must be designed around pass-FET SOA | `REJECTED` for v1 selected envelope; future revision option |
+| Architecture | Normal-path behavior | Parked/USB implications | Disposition |
+|---|---|---|---|
+| Series Schottky | Zero controller IQ but material voltage and thermal loss | Blocks reverse polarity but does not provide the selected OV disconnect/RCB behavior | `REJECTED` for the vehicle path |
+| P-channel MOSFET | Lower loss than a diode but higher resistance than the selected N-FET pair | Still needs qualified negative-gate and OV control | `REJECTED` |
+| LM74720-Q1 plus back-to-back 100 V N-FETs | Low conduction loss, programmable native OV, reverse-polarity protection, and true RCB while enabled | Prevents a powered downstream rail from driving OBD16; controller plus OV divider receives a 60 µA design allocation at 12 V | **`CONDITIONAL PROTOTYPE FREEZE`** |
+| Full surge-stopper/eFuse front end | Can address a different unsuppressed envelope but adds sense/pass-element SOA, loss, IQ, and thermal work | Does not remove the need for an upstream physical fuse | `REJECTED` for the stated v1 pulse envelope |
 
-### Controller variant change
+### Controller and OV threshold
 
-Task 4.7 approved replacing `LM74502HQDDFRQ1` with `LM74502QDDFRQ1`; Task 5A retains that comparison as historical rationale but `REOPENED` the controller/threshold implementation.
-
-Both variants are AEC-Q100 grade 1. TI characterizes operation from 4–60 V, recommends −60…+60 V at the pins and specifies ±65 V absolute maximum. Operating quiescent current is 45 µA typical/65 µA maximum; 110 µA remains only a conservative `DESIGN_REQUIREMENT` budget allocation. The non-H device uses a 60 µA typical gate-source current and TI supports an external `Cdvdt` network; this variant rationale remains historical, but Task 5A reopened the controller/threshold implementation.
-
-The `C_dvdt` value is not guessed. Task 5 shall use TI equation 2:
+`LM74720QDRRRQ1` is AEC-Q100 qualified and replaces the earlier controller. TI specifies 27 µA typical and 35 µA maximum operating current; the selected divider draws
 
 ```text
-C_dvdt = I_GATE × C_OUT / I_INRUSH
+IDIV(12 V) = 12 V / (249 kΩ + 249 kΩ + 28.0 kΩ)
+            = 22.814 µA                         [CALCULATED]
 ```
 
-with the maximum effective post-switch capacitance, desired inrush below the fuse/time-current and MOSFET SOA limits, controller/source-current tolerance, and an isolation resistor.
+The controller-plus-divider result is 49.814 µA typical and 57.814 µA maximum at 12 V; use 60 µA as the `DESIGN_REQUIREMENT` allocation before any separate vehicle-present monitor.
 
-## Fuse and fault strategy
+With all three divider resistors at 0.1% and an explicit ±1 µA OV-node/PCB-leakage model, Task 5A.1 calculates:
 
-`0437002A` (packing suffix `WRA`) is `REOPENED` with the load policy: Littelfuse 437A family, 2 A, 63 V, fast acting, AEC-Q200, 1206.
+| Transition | Modeled input range | Design consequence |
+|---|---:|---|
+| OV rising / PD-low command | 20.690–25.531 V | Remains on through 18 V and commands opening before the defined +26 V/60 s event reaches 26 V; completed isolation/output peak is dynamic |
+| OV falling / reconnect eligibility | 18.815–23.366 V | Returning to 18 V permits reconnect; completion, inrush and ring time require capture |
+
+This intentionally relaxes the former guarantees of cutoff by 20 V and a protected node no higher than 24 V. Every downstream raw-input rating and dynamic overshoot must instead be reviewed against the 25.531 V modeled cutoff endpoint plus measured parasitics. No separate 18–20 V precision supervisor is retained. A separate raw-VBAT monitor, if fitted, is only a vehicle-present/CAN-gating function and is not part of protection.
+
+## Fuse and load policy
+
+`0437002.WRA` is conditionally retained: Littelfuse 437A, AEC-Q200, 2 A, 63 V, fast acting, 1206. The corrected simultaneous named rail peak is:
 
 ```text
-PLOAD = 3.3 V×1.313 A + 5.0 V×1.625 A = 12.458 W
-IIN at 12 V and 80% assumed efficiency = 12.458/(12×0.80) = 1.298 A
-current margin to 2 A = (2.000−1.298)/1.298 = 54.1%
+PMAIN = 3.3 V × 0.750 A   = 2.47500 W
+PAUX  = 5.0 V × 1.16001 A = 5.80005 W
+PPEAK = 8.27505 W                         [CALCULATED]
+
+simple IIN(MAX at 10 V) = PPEAK / (10 V × 0.80)
+                         = 1.034 A        [80% efficiency ASSUMPTION]
 ```
 
-The 54.1% comparison is historical nameplate arithmetic, not a continuous-use result. Littelfuse recommends at most 80% of rating continuously (1.60 A at 25 °C); its 75 °C example gives 1.36 A. The full envelope draws 2.595 A at 6 V and 1.730 A at 9 V, requiring load shedding below 9.73 V at 25 °C and 11.45 V at 75 °C, or a reopened fuse and downstream-fault design.
+The 0.750 A `MAIN` quantity is the complete vehicle-source 3.3 V conversion bucket in the maximum simultaneous 5 V-display case and includes the direct vehicle-only TCAN branch. A separate 3.3 V-display case loads the MC3 output to 1.050 A/3.465 W and produces 6.765 W total rail power; 1.313 A is sizing margin, not an operating current. The 1.050 A case controls MC3 thermal validation. Physical `MAIN_3V3` is downstream of TPS2116 and excludes CAN; do not copy the whole vehicle bucket into a USB-only budget.
 
-The fuse protects the PCB/harness segment from a persistent hard fault even though the vehicle OBD circuit is upstream fused. It is not the normal branch limiter. TPS22919-Q1 switches protect the four small peripheral branches; TPS1H100B-Q1 protects/current-limits SHIFT5; TPS2553-Q1 limits USB input. A PPTC is rejected because its hot-cabin hold/trip behavior and reset ambiguity are less deterministic. A fusible resistor is rejected because it adds normal loss without replacing TVS energy coordination. A monolithic input eFuse is not added because reverse/OV disconnect is already provided and no selected device has been shown to meet this exact energy/current/IQ envelope.
+The Task 5A.1 mode/efficiency model gives 0.9064 A nominal and 0.9545 A with its sensitivity allowance for MAX at 10 V; the simple 1.034 A envelope above is more conservative. MAX is prohibited below 10 V. Below 9.0 V for 100 ms the system enters LOW-VOLTAGE SHED/CORE, whose nominal 6 V input is 0.1211 A. The 6 V TRACK values, 1.0535 A nominal and 1.1102 A with sensitivity, are arithmetic/pre-shed transient screens only, not a permitted steady mode. All remain below Littelfuse's 1.60 A 25 °C guidance and 1.36 A 75 °C example on paper. Measured efficiency, temperature, timers, and load-shedding behavior remain gates; the fuse is not a normal electronic current limiter.
 
-Open items before schematic release are the 437A time-current/inrush curve at temperature, copper fault-current rating, and proof that a normal insertion/load step does not fatigue or open the fuse.
+The −100 V/10 Ω/2 ms reference screen gives approximately 0.0774–0.0840 A²s for the selected TVS pair, versus the fuse data sheet's 0.144 A²s nominal melting value. That comparison is encouraging but does not guarantee fuse survival across tolerance, temperature, repetition, waveform, or ageing. Time-current/inrush, PCB/harness fault clearing, interrupt applicability, and prototype pulse tests remain mandatory. A PPTC, fusible resistor, or eFuse does not replace this physical fuse.
 
-## Main TVS critical gate
+## Coordinated TVS pair and transient intent
 
-### Candidate comparison
+| Part and role | Qualification/package | Manufacturer data used by Task 5A.1 | Conditional decision |
+|---|---|---|---|
+| `SM15T47AY`, positive leg | AEC-Q101, SMC | `VRM=40.2 V`; `VBR=44.7–49.4 V`; `VC=64.5 V at 23.2 A`; 1.5 kW 10/1000 µs | Cathode to fused VBAT; stays below avalanche for normal 18 V, +26 V/60 s, and defined +38 V source |
+| `SM15T33AY`, negative leg | AEC-Q101, SMC | `VRM=28.2 V`; `VBR=31.4–34.7 V`; `VC=45.7 V at 33 A`; 1.5 kW 10/1000 µs | Cathode to ground; avoids sustained conduction at −14 V/60 s and reduces negative-pulse/fuse current |
 
-| Candidate | Polarity / qualification | VRWM / VBR | Published clamp and pulse rating | Leakage/package | Decision |
-|---|---|---|---|---|---|
-| `SM8SF24CA-Q` Bourns | Bidirectional, AEC-Q101 | 24 V; 26.7–29.5 V at 5 mA | 38.9 V maximum at 180 A; 7,000 W at 10/1000 µs | 10 µA max at 24 V/25 °C; 8.1×10.5×1.3 mm DFN | `REOPENED`; correct polarity for −14 V, but 24 V standoff does not cover +26 V/60 s |
-| `SM8S24CA` Vishay | Bidirectional, AEC-Q101 series | 24 V; 26.7–29.5 V | 38.9 V at about 169.5 A; 6,600 W at 10/1000 µs | DO-218AB | Credible alternate; larger through-lead/power package |
-| `LDP01-28AY` ST | Unidirectional, AEC-Q101 | 24 V; 26.7–29.5 V | 40 V at 120 A, 10/1000 µs; 45 V at 1,250 A, 8/20 µs; 5 kW class | 1 µA max at 25 °C; D2PAK | `REJECTED` at the pre-controller position because sustained reverse battery forward-biases a unidirectional clamp and can open the fuse |
-| `SM8SF33CA-Q` Bourns | Bidirectional, AEC-Q101 | 33 V; 36.7–40.6 V | 53.3 V at 131 A; 7,000 W at 10/1000 µs | 10 µA max; DFN | `REJECTED`; inadequate margin to 60 V MOSFETs and no need for 33 V standoff |
+Both devices specify 0.2 µA maximum leakage at 25 °C and 1 µA maximum at 85 °C. They are used in the exact common-anode orientation shown above; two independently oriented unidirectional TVSs are not interchangeable with one bidirectional symbol.
 
-The Task 4.7 `FROZEN` decision for `SM8SF24CA-Q` is superseded and `REOPENED`: the TVS is ahead of the disconnect, its 24 V working standoff does not cover +26 V/60 s, and its 26.7 V minimum breakdown leaves no data-sheet guarantee of non-avalanche operation at that condition. A higher-standoff choice must be coordinated with the 60 V MOSFETs and the exact +38 V pulse.
+| Input condition | Public-data/calculation conclusion | Evidence still required |
+|---|---|---|
+| 12/14.4/18 V | Both TVSs remain below standoff; LM74720 path is enabled and reverse-current blocking is active | Loss, temperature, inrush, and RCB measurement |
+| +26 V/60 s | OV commands PD low by the modeled 25.531 V endpoint; the positive TVS remains below its 40.2 V standoff | Completed isolation, threshold distribution, downstream overshoot, and 60 s recovery test |
+| Defined suppressed +38 V source | Positive TVS remains below 40.2 V standoff; the steady/post-response intent is an open path, but a fast edge crosses OV and gate delay | Exact duration/source/repetition and A/C/PD/VDS/VGS/output measurement |
+| +50 V/2 Ω fast reference | Source itself bounds the raw node to 50 V; Task 5A.1's piecewise TVS screen is conditional | Dynamic clamp, trace inductance, energy, and temperature |
+| −100 V/10 Ω/2 ms fast reference | Piecewise screen gives about 6.223–6.479 A and 0.0774–0.0840 A²s | Actual forward drop, overshoot, pulse sharing, fuse, controller, and FET waveforms |
+| −14 V/60 s reverse | 28.2 V negative-leg standoff prevents sustained TVS avalanche; LM74720/FETs block | Hot/cold reverse-current and 60 s recovery test |
 
-Any selected pre-controller TVS must mount immediately after the input fuse and beside the OBD ground-entry region. Its loop to `POWER_GND` must be short and wide; protected circuitry must not branch from the connector side of that loop.
+ST publishes only typical forward-voltage curves for this use. Task 5A.1 therefore treats 45.7 V plus 3.5 V as a deliberately conservative 49.2 V engineering stress envelope, not a guaranteed pair clamp. With the downstream node held at the allowed 25.531 V endpoint, the corresponding screen is 74.731 V across the controller C–A/FET isolation path: 10.269 V to the LM74720 85 V C–A absolute maximum and 25.269 V to a 100 V FET, before layout overshoot. These are prototype-screen margins, not compliance proof.
 
-### Transient-to-rating coordination
+## OV recovery, low voltage, and protected maximum
 
-For the public TIDA-01167 positive fast-transient reference of +50 V with 2 Ω source resistance:
-
-```text
-conservative TVS bound = 38.9 V at the data-sheet rated current
-source current at that bound = (50−38.9)/2 = 5.55 A
-controller positive margin = 65−38.9 = 26.1 V
-MOSFET VDS margin = 60−38.9 = 21.1 V
-```
-
-For the −100 V, 10 Ω negative reference, treating the bidirectional clamp symmetrically and conservatively:
-
-```text
-source current magnitude = (100−38.9)/10 = 6.11 A
-controller reverse margin = 65−38.9 = 26.1 V
-```
-
-These are historical voltage-stress screens, not current upper bounds or measured operating points: using the maximum clamp specified at 180 A in the source-resistance equation produces a lower, not upper, current estimate. Task 5A's two-point linear screen is still only an `ASSUMPTION`; the physical test must measure TVS current, `VBAT_FUSED_CLAMPED`, `VBAT_SWITCHED`, and `VEHICLE_PROTECTED` simultaneously.
-
-For the required +38 V suppressed-load-dump source, duration, source resistance, repetition and temperature remain undefined; the earlier 27 V/22 V static margin statement does not close TVS/FET coordination. The downstream node must remain ≤24 V (`DESIGN_REQUIREMENT`), giving each 42 V-absolute-maximum buck at least 18 V margin.
-
-The severe public unsuppressed corner demonstrates why it is excluded. If a 101 V source with 0.5 Ω were hypothetically clamped at 38.9 V:
-
-```text
-I = (101−38.9)/0.5 = 124.2 A
-instantaneous TVS power = 38.9×124.2 = 4.83 kW
-rectangular 400 ms energy bound = 4.83 kW×0.4 s = 1.93 kJ
-```
-
-The real exponential pulse is not rectangular, and the Bourns data sheet contains load-dump graphs, but a 7 kW 10/1000-µs headline does not prove 400 ms, hot-start, repetitive, PCB-mounted survival. This remains outside the v1 guarantee unless a purchased-standard/OEM test profile and thermal calculation approve it.
-
-## UV, OV, source crossover, and protected maximum
-
-- The Task 4.7 values `UV falling nominal = 6.0 V` and `OV nominal = 18.0 V` are historical targets, not guaranteed thresholds.
-- Task 5A proved no UV-divider overlap: guaranteed turn-on by 6.0 V requires divider scale `K ≤ 4.545`, while turn-off above even 5.0 V USB requires `K > 4.869`; EN sink-current behavior makes the high-value-divider uncertainty worse.
-- Task 5A also proved no OV-divider overlap: guaranteed operation through 18 V requires `K ≥ 15.451`, while guaranteed cutoff by 20 V requires `K ≤ 15.004`.
-- Because LM74502-Q1 does not reverse-block while enabled, the threshold/controller implementation is `REOPENED`; resistor selection alone cannot close either window.
-- `VEHICLE_PROTECTED ≤24.0 V` for every approved transient is a measured `DESIGN_REQUIREMENT`, not a current claim.
-- After UV/OV, reconnect is automatic only after hysteresis and source stability. Firmware must not turn the event into permission to transmit.
-
-Exact divider values must balance comparator bias/error, parked current, resistor voltage rating, and input leakage. Their combined 12 V draw plus the vehicle detector/ADC network is limited to 25 µA at the OBD input (`DESIGN_REQUIREMENT`).
+- No static OV trip through 18 V and reconnect eligibility after +26 V are guaranteed only within the stated resistor and ±1 µA leakage model; completion time is not.
+- Low-voltage operation uses controlled reset plus the fuse/load-shedding policy; it is no longer coupled to a USB/source-crossover threshold.
+- USB/vehicle selection occurs after independent 3.3 V conversion, so a raw-input UV divider is not used to decide whether USB may supply the core.
+- After OV/reverse events, reconnect is automatic only after hysteresis and source stability. Reconnection never authorizes CAN transmission.
+- The former `≤20 V` cutoff and `≤24 V` protected-node limits are superseded. Prototype tests must establish actual `FILTERED_VEHICLE` overshoot and downstream margin.
 
 ## Input filter gate
 
-The filter is after the disconnect MOSFETs so it cannot dump stored energy directly into the raw vehicle pin and so OV turn-off isolates its bulk.
-
-```text
-VBAT_SWITCHED
-  -> 100 nF + 1 µF, 50 V X7R local high-frequency shunt
-  -> 2.2–4.7 µH series inductor, ≥3 A continuous, ≥4 A saturation, low DCR
-  -> 2 × 4.7 µF, 50 V X7R plus 47–100 µF, 50 V bulk
-  -> local 4.7 µF buck input capacitors and 100 nF bypasses
-  -> VEHICLE_PROTECTED / SYS_IN
-```
-
-The topology remains a starting direction; exact L/C/R order codes and the damping implementation are `REOPENED`. The conditional 100 µF hybrid damping capacitor has up to 50 µA leakage and raises the doubled parked envelope to 525.08 µA, so it is not approved while the 0.5 mA stretch target remains. Any replacement still requires source/filter impedance, negative-incremental-impedance, bias, tolerance, temperature, harness, inrush and EMI validation.
-
-The raw-node ceramics are 100 V rated because they sit before disconnect. Post-switch capacitors are 50 V rated against the 24 V protected maximum. Effective capacitance after DC bias, ripple current, bulk ESR, inductor saturation, inrush, and the LMQ66420 input-capacitance requirements remain part of the schematic calculation. CISPR 25 testing, not visual resemblance to a reference filter, decides final population.
+The damped filter remains after the disconnect MOSFETs so stored energy cannot discharge directly into OBD16 and OV turn-off isolates the bulk. Exact L/C/R values, order codes, leakage, DC-bias derating, inrush, impedance/stability analysis, and layout constraints are controlled only by [`task5a1-power-architecture.md`](task5a1-power-architecture.md). Do not copy the superseded Task 4.7 2.2–4.7 µH/47–100 µF envelope or invent alternate values in schematic capture.
 
 ## Ground architecture
 
@@ -152,25 +119,33 @@ The raw-node ceramics are 100 V rated because they sit before disconnect. Post-s
 ## Vehicle and USB source coexistence
 
 ```text
-USB_VBUS_RAW -> USBLC6-2SC6Y -> TPS2553QDBVRQ1 -> USB5_PROTECTED
-               -> PMEG6030EP-Q -> SYS_IN
+USB-C D+/D- -> USBLC6-2SC6Y I/O pass-through -> ESP32-S3 USB D+/D-
+USB-C VBUS -> USB_VBUS_RAW
+                  +-> USBLC6-2SC6Y VBUS shunt/reference pin
+                  +-> TPS2553QDBVRQ1 -> USB5_PROTECTED
+                      -> TPS62162QDSGRQ1 fixed 3.3 V -> USB_3V3 -> TPS2116DRLR VIN2
+USB-C CC1/CC2 -> separate USB Type-C sink terminations
 
-VEHICLE_PROTECTED -------------------------------> SYS_IN
+FILTERED_VEHICLE -> LMQ66420MC3RXBRQ1 -> VEH_3V3 -> TPS2116DRLR VIN1
+                                                 -> TPS2116 VOUT -> MAIN_3V3
+
+FILTERED_VEHICLE -> conditionally frozen LMQ66420MC5RXBRQ1 -> AUX5
+VEH_3V3 -----------------------------------------------------> CAN VCC
 ```
 
 | OBD | USB | Required result |
 |---|---|---|
 | OFF | OFF | All rails off; only passive ESD/CC structures present |
-| ON | OFF | Vehicle supplies MAIN_3V3 and permitted peripherals; USB VBUS is not driven |
-| OFF | ON | TPS2553/PMEG path supplies MAIN_3V3 for development; AUX5 and all external 5 V outputs locked off; vehicle MOSFETs remain off |
-| ON | ON | Vehicle normally wins; PMEG blocks vehicle-to-host current. If OBD sags, UVLO opens the vehicle path before USB can drive it; measure the crossover and reverse current |
+| ON | OFF | Vehicle supplies `VEH_3V3`, CAN VCC, MAIN_3V3, and policy-permitted AUX5 loads |
+| OFF | ON | TPS2553/TPS62162 supplies only `USB_3V3` and the muxed MAIN_3V3/core; CAN VCC and AUX5 remain off and the LM74720/FET path blocks USB-to-OBD current |
+| ON | ON | TPS2116 selects the vehicle-priority input and isolates the two regulated 3.3 V sources; verify transition droop and reverse current in both directions |
 
-`PMEG6030EP-Q` remains frozen because its 60 V rating tolerates the selected `SYS_IN` envelope and its forward drop preserves USB-only headroom. Its data sheet gives 5 µA typical reverse current at 10 V/25 °C and 200 µA maximum only at 60 V/25 °C. Reverse leakage rises strongly with temperature; room/hot parked current and thermal runaway margin must be measured. A future low-leakage PN or ideal-diode replacement is required if this path prevents the parked-current target.
+`TPS2553QDBVRQ1` uses `CRCW060360K4FKEA`, 60.4 kΩ ±1%, for `RILIM`. TI Section 8.5 equations at 59.796–61.004 kΩ screen a 387.2–491.3 mA fault/current-limit population band, not an operating contract. The prototype startup source/cable must advertise and sustain at least 500 mA at 4.75 V. After ramp, `USB_ENUM` is at most 100 mA total on `MAIN_3V3` (about 82 mA steady at VBUS under the documented screen); configured operation is provisionally capped at 350 mA VBUS steady and 400 mA `MAIN_3V3`, with MAX prohibited. The 100 mA contract is not an inrush ceiling and does not establish generic legacy USB 2.0 pre-enumeration compliance. Verify source/cable droop, current-limited startup and every load state. The former `PMEG6030EP-Q` raw source-OR is superseded.
 
 USB-only behavior:
 
-- MAIN_3V3 powers ESP32, TCAN logic, and expander; optional GNSS/SD operation must remain inside the configured 500 mA VBUS budget.
-- TCAN3404-Q1 bus pins are high impedance when unpowered and remain non-transmitting when powered without an OBD harness. STB defaults high.
+- MAIN_3V3 powers the core development domain; optional GNSS/SD operation must remain inside the verified TPS2553/TPS62162 and USB configured-current budget.
+- TCAN3404-Q1 VCC is vehicle-only. Its bus pins must remain high impedance with OBD absent, and the board must remain non-transmitting.
 - No AUX5, DISPLAY_5V, SHIFT5, or sound load is enabled.
 - With both sources, USB data remains usable. Source presence never authorizes CAN transmission.
 
@@ -178,21 +153,19 @@ USB-only behavior:
 
 `Protected max` values are design-node limits to be proven on the prototype.
 
-| Component / node | Absolute maximum or rating | Protected max | Margin | Status |
+| Component / node | Rating or modeled limit | Task 5A.1 stress screen | Static margin before overshoot | Status |
 |---|---:|---:|---:|---|
-| `0437002A` fuse | 63 V | 40 V raw clamp requirement | 23 V | `REOPENED`; full-load/thermal policy and pulse/fault coordination unresolved |
-| `LM74502QDDFRQ1` VS/EN/OV | ±65 V | ±40 V raw clamp requirement | 25 V magnitude | `REOPENED`; threshold implementation and physical clamp test unresolved |
-| `DMT6007LFGQ-7` pair | 60 V VDS | 40 V raw clamp requirement | 20 V | `REOPENED`; negative-pulse stress can reach about 62.2 V with a held 24 V output at the published 38.9 V clamp point |
-| `LMQ66420MC3RXBRQ1` VIN/EN | 42 V absolute, 36 V recommended | 24 V downstream requirement | 18 V absolute / 12 V recommended | `FROZEN silicon` |
-| `LMQ66420MC5RXBRQ1` VIN/EN | 42 V absolute, 36 V recommended | 24 V downstream requirement | 18 V absolute / 12 V recommended | `REOPENED`; AUX5 continuous-load/thermal requirement unresolved |
-| `PMEG6030EP-Q` reverse voltage | 60 V | 24 V at cathode with USB absent | 36 V | `FROZEN`; leakage test required |
+| `0437002.WRA` fuse | 63 V rating; nominal melt `I²t=0.144 A²s` | Negative screen `0.0774–0.0840 A²s` | No voltage margin claimed: interrupt applicability depends on the prospective DC fault circuit | `CONDITIONAL PROTOTYPE FREEZE`; temperature/fault/pulse tests required |
+| `LM74720QDRRRQ1` A pin | recommended −60…+65 V | +50 V source; −49.2 V engineering envelope | +15.0/−10.8 V to recommended endpoints | `CONDITIONAL PROTOTYPE FREEZE` |
+| `LM74720QDRRRQ1` C–A | 85 V absolute maximum | 74.731 V with output held at 25.531 V | 10.269 V | Lab overshoot gate |
+| `STL125N10F8AG` pair | 100 V VDS | 74.731 V held-output screen | 25.269 V | `CONDITIONAL PROTOTYPE FREEZE`; measure each FET |
+| `LMQ66420MC3RXBRQ1` VIN/EN | 42 V absolute, 36 V recommended | 25.531 V modeled OV-open endpoint plus dynamic overshoot | 16.469 V absolute / 10.469 V recommended before overshoot | `FROZEN silicon`; dynamic proof required |
+| `LMQ66420MC5RXBRQ1` VIN/EN | 42 V absolute, 36 V recommended | 25.531 V modeled OV-open endpoint plus dynamic overshoot | 16.469 V absolute / 10.469 V recommended before overshoot | `CONDITIONAL PROTOTYPE FREEZE` |
 | `TPS22919-Q1` | 6 V absolute | 5.5 V rail maximum | 0.5 V | `FROZEN`; regulate AUX5 tolerance accordingly |
 | `TPA2005D1TDGNRQ1` active supply | 6 V absolute | 5.5 V rail maximum | 0.5 V | `FROZEN direction`; use T-suffix −40…+105 °C order code |
 | `LP5814DRLR` | 6 V absolute | 3.6 V MAIN_3V3 maximum | 2.4 V | `APPROVED`; not AEC-qualified |
-| Raw-node capacitors | 100 V | 40 V | 60 V | exact AEC-Q200 parts `PROVISIONAL` |
-| Post-switch capacitors | 50 V | 24 V | 26 V | exact AEC-Q200 parts `PROVISIONAL` |
 
-The margin table does not replace pin-specific injection-current, transient duration, temperature, or repetitive-stress checks.
+The margin table does not replace pin-specific injection-current, transient duration, temperature, repetitive-stress, layout-inductance, or SOA checks. Exact filter capacitor ratings and stress are controlled by `task5a1-power-architecture.md`.
 
 ## CAN protection freeze
 
@@ -236,41 +209,18 @@ AUX5 -> TPS1H100BQPWPRQ1 -> SHIFT5
 
 ## Complete parked-current revalidation
 
-All values are referred to a 12 V OBD input. Rail-load conversions use 60% low-load efficiency (`ASSUMPTION`).
+The complete Task 5A.1 parked tree, including the selected filter and regulated-source mux, is controlled by [`task5a1-power-architecture.md`](task5a1-power-architecture.md). The obsolete Task 4.7 subtotal must not be carried into capture. The directly reproducible vehicle-front-end contributions at 12 V are:
 
-| Always-powered path | 12 V contribution | Basis |
+| Always-connected vehicle-front-end path | Contribution | Basis |
 |---|---:|---|
-| LM74502-Q1 controller | 110.0 µA | Conservative `DESIGN_REQUIREMENT` allocation; data-sheet operating IQ is 45 µA typical/65 µA maximum |
-| SM8SF24CA-Q TVS | 10.0 µA | `VERIFIED_DATASHEET` maximum at 24 V/25 °C, conservatively allocated at 12 V; hot leakage unverified |
-| MAIN buck own IQ | 5.0 µA | `DESIGN_REQUIREMENT`; data-sheet typical is 1.5 µA, guaranteed implementation max unresolved |
-| UV/OV, vehicle detection, gated ADC sensing | 25.0 µA | `DESIGN_REQUIREMENT` combined at 12 V |
-| TCAN3404 standby | 7.8 µA | `17 µA×3.3/(12×0.60)` (`CALCULATED`) |
-| ESP32 module deep-sleep branch | 22.9 µA | `50 µA×3.3/(12×0.60)` (`DESIGN_REQUIREMENT` + `CALCULATED`) |
-| TCA6408A-Q1 standby | 4.6 µA | `10 µA×3.3/(12×0.60)` using data-sheet maximum (`CALCULATED`) |
-| LP5814 shutdown | 0.14 µA | `0.3 µA×3.3/(12×0.60)` using data-sheet maximum (`CALCULATED`) |
-| Wake/button/timer logic | 4.6 µA | Existing 10 µA rail allocation converted to input |
-| Disabled TPS22919 branches | 1.5 µA | `DESIGN_REQUIREMENT` total including temperature/leakage |
-| USB PMEG/source-isolation path | 5.0 µA | `ASSUMPTION` based on 5 µA typical at 10 V/25 °C; must be measured hot |
-| CAN/USB/other signal ESD leakage | 5.0 µA | `DESIGN_REQUIREMENT` |
-| Miscellaneous leakage | 10.0 µA | `DESIGN_REQUIREMENT` |
-| GNSS, SD, display, AUX5, SHIFT5, sound, visible LEDs | 0 µA intended load | Rails/outputs off; residual switch leakage accounted above |
-| Disabled AUX5 buck VIN current | 1.0 µA | `VERIFIED_DATASHEET` maximum shutdown input current |
-| **Corrected subtotal before optional damping capacitor** | **212.54 µA** | `CALCULATED` |
-| **100% uncertainty/temperature allowance** | **212.54 µA** | `DESIGN_REQUIREMENT` margin |
-| **Corrected doubled envelope before optional damping capacitor** | **425.08 µA = 0.425 mA** | `CALCULATED` |
+| LM74720-Q1 controller | 27 µA typical / 35 µA maximum | `VERIFIED_DATASHEET` operating current |
+| OV divider | 22.814 µA | `12 V / 526 kΩ`, `CALCULATED` |
+| Controller + divider | 49.814 µA typical / 57.814 µA maximum | `CALCULATED`; use 60 µA design allocation |
+| SM15T47AY + SM15T33AY | 0.4 µA maximum at 25 °C; 2 µA maximum at 85 °C | Sum of the two data-sheet leakage limits |
 
-The conditional damping capacitor adds 50 µA maximum before the same 100% allowance: `(212.54 + 50.00) × 2 = 525.08 µA`. This still passes the <1 mA release requirement by 0.475 mA, but fails the <0.5 mA stretch target by 0.025 mA.
+A complete conservative 12 V subtotal is 204.013 µA; applying the 100% uncertainty/temperature allowance gives a 408.026 µA (0.408 mA) paper envelope. The doubled 6/8/10/12/14.4/18 V model is 0.476/0.438/0.419/0.408/0.402/0.400 mA. These are calculation results, not measured board limits.
 
-Comparison:
-
-- previous Task 4.6 estimate: 0.371 mA;
-- Task 4.7 historical estimate: 0.424 mA; it omitted AUX5 shutdown current;
-- corrected Task 5A base envelope before the optional damping capacitor: 0.425 mA;
-- conditional envelope with the optional 50 µA capacitor: 0.525 mA;
-- `<1.0 mA` release requirement: **PASS on calculated conditional allocation**, 0.475 mA margin; not verified;
-- `<0.50 mA` room-temperature stretch target: **FAIL with the conditional capacitor**, 0.025 mA over; not verified.
-
-Even the corrected 0.425 mA base margin is small. PMEG reverse leakage, buck maximum IQ, ESP32 module/PSRAM sleep current, TVS leakage, divider tolerances, GPIO pulls, filter leakage and temperature can consume it. The exact damping network is `REOPENED`; complete assembled-board measurement over voltage and temperature remains the only acceptance evidence.
+A TPS3899 raw-VBAT monitor, if retained, is accounted separately as a vehicle-present/CAN-gate function; it does not set protection thresholds. With USB absent, the TPS62162 USB buck is not connected to raw vehicle input. Final acceptance still requires complete assembled-board current measurement over voltage and temperature, including filter leakage, converter/mux states, ESP32/PSRAM, CAN standby, pull networks, contamination, and source transitions.
 
 ## Pre-schematic thermal sanity check
 
@@ -278,15 +228,15 @@ Assumptions: 85 °C hot enclosure ambient; 50 °C/W effective buck junction-to-a
 
 | Item | Calculation / concern | Result and requirement |
 |---|---|---|
-| Back-to-back DMT6007LFGQ pair | Hot RDS(on) assumption `2×8.5 mΩ×1.7 = 28.9 mΩ`; `1.298²×0.0289` | 48.7 mW (`CALCULATED`); low steady heat, but provide low-impedance copper and verify transient SOA |
-| Input TVS | No normal avalanche at 12–18 V; transient-only energy | Large thermal/ground copper; keep away from GNSS/ESP antennas; test hot pulses, no steady compliance claim |
-| MAIN_3V3 buck | `Pout=3.3×1.313=4.333 W`; assumed 85% gives `Ploss=0.765 W`; `ΔT=38.2 °C` | Approx. 123.2 °C junction at 85 °C ambient; 26.8 °C to 150 °C limit (`CALCULATED`), requiring TI copper/via guidance |
-| AUX5 buck | `Pout=5×1.625=8.125 W`; assumed 88% gives `Ploss=1.108 W`; `ΔT=55.4 °C` | Approx. 140.4 °C junction; only 9.6 °C to 150 °C (`CALCULATED`). **High validation risk**; derate simultaneous loads or propose higher-current/lower-loss silicon if measurement fails |
+| Back-to-back STL125N10F8AG pair | Hot screen `2×4.6 mΩ×1.7=15.64 mΩ`; permitted conservative MAX at 10 V is 0.9545 A | Approximately 14.3 mW (`CALCULATED`); 6 V TRACK is only a ≤100 ms pre-shed arithmetic screen. Verify actual VGS, RDS(on), copper, temperature, and transient stress |
+| SM15T47AY + SM15T33AY | No normal avalanche at 12–18 V; transient-only energy | Large thermal/ground copper; keep away from GNSS/ESP antennas; test hot/cold pulses, no compliance claim |
+| MAIN vehicle buck | `3.3 V×0.750 A=2.475 W` in the maximum simultaneous 5 V-display case; separate 3.3 V-display case is `3.3 V×1.050 A=3.465 W` | `LMQ66420MC3RXBRQ1` remains frozen; 1.050 A controls thermal validation, while 1.313 A is sizing margin only. Shared exact population: `XGL5030-222MEC`; 2 × `CGA6P1X7R1N106K250AC` CIN; 4 × `CGA6P3X7R1E226M250AB` COUT plus one DNP; 2 × `CGA3E1X7R1C105K080AC` CVCC; CBOOT DNP. Validate losses, effective capacitance, copper and temperature. |
+| AUX5 buck | STREET `0.56001 A`; TRACK `0.92001 A`; MAX `1.16001 A` | `LMQ66420MC5RXBRQ1` is conditional and uses the same exact shared population: MAX is limited to ≤10 s and ≤25% rolling 60 s; validate efficiency, effective capacitance, hot enclosure and each duty state. |
 | TPS22919-Q1 | Use conservative 200 mΩ hot bound: at 0.6 A, `I²R=72 mW`; 0.4 A gives 32 mW | Provide local copper; verify voltage drop/thermal/current-limit and QOD behavior per branch |
 | TPS1H100-Q1 | 0.50 A qualified load is modest, but a short forces linear/current-limit operation | Calculate RCL, timer/SOA, copper and repetitive fault behavior; locate away from GNSS RF |
-| PMEG6030EP-Q USB diode | At 0.5 A and 0.4 V maximum 25 °C forward drop, about 0.20 W | Give cathode copper; verify USB-only dropout and hot leakage |
+| USB buck/mux | TPS2553-limited VBUS -> exact TPS62162 population -> TPS2116 with `EEEFK0J101AV` 100 µF/6.3 V at VOUT | Verify the ≥500 mA/4.75 V prototype source contract, post-ramp ≤100 mA `USB_ENUM`, current-limited startup/dropout, transition droop, reverse blocking and package temperatures; do not claim generic legacy USB 2.0 pre-enumeration compliance. |
 | TPA2005D1-Q1 | `1 W/0.75−1 W = 0.333 W` loss at assumed 75% efficiency | PowerPAD soldered to ground copper/vias; keep BTL traces compact and away from GNSS; speaker opening/acoustics deferred |
-| Fuse | 1.298 A at 12 V is below the 2 A nameplate but near the 1.36 A 75 °C continuous-use example; full load is 2.595 A at 6 V and 1.730 A at 9 V | `REOPENED`: define low-voltage/hot load shedding or change the fuse and re-coordinate inrush/fault behavior |
+| Fuse | MAX at 10 V is 0.9064 A nominal/0.9545 A sensitivity; below 9 V for 100 ms the permitted steady state is CORE/SHED, 0.1211 A nominal at 6 V | Conditionally retain 2 A; 6 V TRACK 1.0535/1.1102 A is transient arithmetic only. Validate shedding, insertion, inrush, pulses, ageing, and downstream fault clearing |
 
 This is not a thermal simulation. Actual efficiency curves, switching frequency, inductor/core/copper loss, board stackup, enclosure, airflow, duty cycle, and simultaneous-load policy determine the result.
 
@@ -294,14 +244,14 @@ This is not a thermal simulation. Actual efficiency curves, switching frequency,
 
 | Domain | Frozen names |
 |---|---|
-| Raw vehicle | `VBAT_OBD_RAW`, `POWER_GND`, `VBAT_FUSED_CLAMPED`, `VBAT_SWITCHED`, `VEHICLE_PROTECTED`, `VEHICLE_PRESENT`, `PWR_FAULT_N` |
-| Source OR / conversion | `SYS_IN`, `USB_VBUS_RAW`, `USB5_PROTECTED`, `MAIN_3V3`, `AUX5`, `MAIN_PGOOD`, `AUX5_EN`, `AUX5_PGOOD` |
+| Raw vehicle | `VBAT_OBD_RAW`, `POWER_GND`, `VBAT_FUSED_CLAMPED`, `TVS_MID`, `VBAT_SWITCHED`, `FILTERED_VEHICLE`, `VEHICLE_PRESENT`, `PWR_FAULT_N` |
+| Source conversion/mux | `USB_VBUS_RAW`, `USB5_PROTECTED`, `USB_3V3`, `VEH_3V3`, `MAIN_3V3`, `AUX5`, `MAIN_PGOOD`, `AUX5_EN`, `AUX5_PGOOD` |
 | Switched rails | `GNSS_3V3`, `SD_3V3`, `DISPLAY_3V3`, `DISPLAY_5V`, `SHIFT5`, `SOUNDER5` |
 | CAN | `CANH_OBD`, `CANL_OBD`, `CANH_PHY`, `CANL_PHY`, `CAN_RX`, `CAN_TX`, `CAN_STB` |
 | GNSS | `GNSS_RF`, `ANT_BIAS`, `GNSS_RX`, `GNSS_TX`, `GNSS_TIMEPULSE`, `GNSS_RESET_N` |
 | External/control | `SHIFT_DATA_5V`, `SHIFT5_EN`, `SHIFT_FAULT_N`, `MODE_N`, `STATUS_DRV_EN`, `USB_PRESENT` |
 
-There is no separate `AON_3V3`: `MAIN_3V3` is the always-on parked rail. Do not create KiCad nets in Task 4.7.
+There is no separate `AON_3V3`: muxed `MAIN_3V3` is the always-on core rail. `VEH_3V3` and `USB_3V3` remain distinct mux inputs; CAN VCC and AUX5 are vehicle-only.
 
 ## First-prototype test points
 
@@ -310,9 +260,9 @@ There is no separate `AON_3V3`: `MAIN_3V3` is the always-on parked rail. Do not 
 | `VBAT_OBD_RAW` | Yes | Before fuse; guarded/labelled for controlled bench use |
 | `VBAT_FUSED_CLAMPED` | Yes | Measure TVS clamp; high-voltage spacing |
 | `VBAT_SWITCHED` | Yes | Verify MOSFET turn-on/off and inrush |
-| `VEHICLE_PROTECTED` / `SYS_IN` | Yes, separate measurement points if nodes differ | Measure filter and source crossover |
+| `FILTERED_VEHICLE` | Yes | Measure post-filter overshoot, ripple, and disconnect behavior |
 | `POWER_GND` | Multiple compact points | One near power entry and one low-current instrument point |
-| `MAIN_3V3`, `AUX5` | Yes | Rail ripple/thermal/load-step probes |
+| `VEH_3V3`, `USB_3V3`, `MAIN_3V3`, `AUX5` | Yes | Rail/mux ripple, transition, thermal, and load-step probes |
 | `MAIN_PGOOD`, `AUX5_EN`, `AUX5_PGOOD` | Yes | Small logic pads |
 | `CANH_OBD`, `CANL_OBD` | Yes | Compact paired pads; no long stubs |
 | `CAN_RX`, `CAN_TX`, `CAN_STB` | Yes | Logic verification/listen-only evidence |
@@ -328,16 +278,16 @@ Do not add a GNSS RF test pad. Use the U.FL/VNA fixture and an approved RF coupo
 
 Bench work uses current-limited supplies, appropriate transient/ESD equipment, differential probes, fusing, thermal monitoring, and an approved safety procedure. Ordinary bench tests do not establish standards compliance.
 
-1. Measure parked current at 12 V/25 °C, then over the approved parked voltage and temperature range; separate controller, USB diode, MAIN buck, ESP, CAN, expander, and leakage paths.
+1. Measure parked current at 12 V/25 °C, then over the approved parked voltage and temperature range; separate controller/divider, TVSs, vehicle buck, mux, ESP, CAN, expander, filter, sensing, and leakage paths.
 2. Measure active current for named typical and maximum-load states; verify fuse and source copper temperature.
-3. Sweep UV/OV slowly and dynamically; record turn-off/reconnect thresholds, hysteresis, chatter, `VEHICLE_PROTECTED` overshoot, and repeated recovery.
+3. Sweep low input and OV slowly and dynamically; record load shedding, reset, 20.690–25.531 V turn-off, 18.815–23.366 V reconnect, hysteresis, chatter, `FILTERED_VEHICLE` overshoot, and repeated recovery.
 4. Apply approved warm/cold-crank waveforms; verify controlled reset, no reboot loop, SD recovery, CAN passive state, and staged peripheral restart.
 5. Perform a current-limited −14 V reverse-polarity test and approved fast positive/negative transient tests; confirm no fuse opening from normal reverse connection and no damage.
 6. Measure the TVS current/clamp at hot and cold starts under the selected pulse matrix; inspect component and copper temperature. Stop before unapproved destructive severity.
 7. Load-step and impedance-test the damped input filter and both converters; check resonance, conducted noise, startup/inrush, PGOOD, ripple, and stability.
-8. Thermally soak maximum credible MAIN_3V3/AUX5 load overlap; inspect buck, inductor, MOSFETs, fuse, TVS, load switches, shift switch, USB diode, and audio amplifier.
+8. Thermally soak maximum credible MAIN_3V3/AUX5 load overlap, including the bounded AUX5 MAX duty; inspect both bucks, mux, inductors, MOSFETs, fuse, TVSs, load switches, shift switch, USB path, and audio amplifier.
 9. Verify CAN RX/TX, hardware/software listen-only, standby wake, bounded diagnostics, bus faults, termination OFF, CMC bypass/population comparison, and unpowered loading.
-10. Test OBD-only, USB-only, neither, and simultaneous sources, including a slow/fast OBD sag through the USB crossover; measure reverse current into both OBD and VBUS.
+10. Test OBD-only, USB-only, neither, and simultaneous sources through TPS2116 transitions; measure rail droop and reverse current into OBD, each 3.3 V source, and VBUS.
 11. Verify GNSS startup, 25 Hz UART load, active-antenna voltage/current/short, RF insertion loss/C/N0, ESD-device effect, and converter/display/shift/audio desense.
 12. Test SD insertion/write/load steps and controlled/abrupt brownout corruption recovery.
 13. Test a 0.5 A electronic SHIFT5 load, short/hot-plug/fault reporting, then the real ten-pixel cable at full configured brightness; inspect data integrity and EMI.
@@ -349,18 +299,19 @@ Bench work uses current-limited supplies, appropriate transient/ESD equipment, d
 
 The repository-owned RejsaCAN v3.4 schematic, BOM and example firmware were reviewed as `REFERENCE_ONLY` secondary evidence. No external design file or legacy input-protection circuit was copied as a validated solution; the legacy vehicle-input architecture was rejected against the v1 envelope above.
 
+### Superseded Task 4.7 choices — historical only
+
+The former `SM8SF24CA-Q`/single-bidirectional-TVS, `LM74502QDDFRQ1`, two `DMT6007LFGQ-7`, and `PMEG6030EP-Q` raw source-OR selections are superseded. They are not approved alternates or active blockers for Task 5A.1 capture.
+
 ## Primary sources
 
-- Texas Instruments, [LM74502-Q1/LM74502H-Q1 data sheet SNOSDE0A](https://www.ti.com/lit/ds/symlink/lm74502-q1.pdf), §§9.3.3–9.3.5, application circuits, ratings, and layout.
-- Diodes Incorporated, [DMT6007LFGQ data sheet](https://www.diodes.com/datasheet/download/DMT6007LFGQ.pdf), 60 V and 4.5/10 V RDS(on) limits.
-- Littelfuse, 437A/`0437002A` product data, 2 A/63 V AEC-Q200 fuse.
-- Bourns, [SM8SF-Q data sheet](https://www.bourns.com/docs/Product-Datasheets/SM8SF-Q.pdf), candidate table and load-dump graphs.
-- Vishay, [SM8S data sheet](https://www.vishay.com/docs/88387/sm8s.pdf), 6.6 kW DO-218AB alternate.
-- STMicroelectronics, [LDP01-28AY data sheet](https://www.st.com/resource/en/datasheet/ldp01-28ay.pdf), unidirectional 5 kW candidate and ISO 16750 load-dump graphs.
+- Texas Instruments, [LM74720-Q1 data sheet](https://www.ti.com/lit/ds/symlink/lm74720-q1.pdf), ratings, reverse-current blocking, OV thresholds, application circuit, and layout.
+- STMicroelectronics, [SM15T-Y automotive TVS data sheet](https://www.st.com/resource/en/datasheet/sm15t36cay.pdf), `SM15T47AY` and `SM15T33AY` ratings, electrical table, leakage, and typical forward curve.
+- STMicroelectronics, [STL125N10F8AG product page](https://www.st.com/en/power-transistors/stl125n10f8ag.html) and data sheet, 100 V/RDS(on)/gate/thermal/package limits.
+- Littelfuse, [437A data sheet](https://www.littelfuse.com/assetdocs/littelfuse-fuse-437a-datasheet?assetguid=82c80a59-a4b9-4748-920b-3e2b65b813a9), `0437002.WRA` ratings, derating guidance, and nominal melting `I²t`.
 - Texas Instruments, [TIDA-00699](https://www.ti.com/tool/TIDA-00699), suppressed-load-dump/cold-crank/EMI reference; [TIDA-01167](https://www.ti.com/tool/TIDA-01167), unsuppressed-load-dump reference.
 - Texas Instruments, [LMQ66420-Q1 data sheet](https://www.ti.com/lit/ds/symlink/lmq66420-q1.pdf), recommended/absolute VIN, IQ, thermal and passive guidance.
-- Texas Instruments, TCAN3404-Q1, TPS22919-Q1, TPS2553-Q1, TPS1H100-Q1, TCA6408A-Q1, TPA2005D1-Q1 and LP5814 data sheets.
-- Nexperia, [PMEG6030EP-Q data sheet](https://assets.nexperia.com/documents/data-sheet/PMEG6030EP-Q.pdf), reverse leakage, drop, ratings and thermal behavior.
+- Texas Instruments, TPS2553-Q1, TPS62162-Q1, TPS2116, TCAN3404-Q1, TPS22919-Q1, TPS1H100-Q1, TCA6408A-Q1, TPA2005D1-Q1 and LP5814 data sheets.
 - STMicroelectronics, ESDCAN04-2BWY and USBLC6-2SC6Y data sheets.
 - Littelfuse, [AQ3118E-01ETG data sheet](https://www.littelfuse.com/assetdocs/littelfuse_tvs_diode_array_aq3118e-01etg_datasheet.pdf), automotive RF ESD protection.
 - u-blox, [NEO-M9N Integration Manual R10](https://content.u-blox.com/sites/default/files/NEO-M9N_Integrationmanual_UBX-19014286.pdf), active-antenna bias-T and RF layout guidance.

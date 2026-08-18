@@ -126,8 +126,8 @@ UART signals can be routed through the ESP32-S3 GPIO matrix. v3.4 explicitly exp
 | Buzzer | No existing buzzer circuit; direct GPIO unsuitable for unspecified load | Resolved for v1: GPIO17 drives the TPA2005D1TDGNRQ1 input network; GPIO42 remains JTAG MTMS |
 | MODE button | GPIO0 is already PROG strap and unsuitable for normal mode key | Reclaim GPIO10 from blue LED in derivative; keep boot strap untouched |
 | microSD | GPIO45 CS is a strap pin; display sharing adds bus/cable load | Resolved for v1: SD CS moves to GPIO11; GPIO45 stays unloaded |
-| Low power | Reference has CAN wake only while main rail is retained; full hardware-off is voltage/USB wake only | Resolved for v1 architecture: hybrid rail-on ESP32/TCAN standby with switched peripherals; calculated parked envelope ≤0.424 mA at 12 V |
-| Peak power | U4 is 600 mA class and U5 is undocumented here; new loads exceed its class | Resolved silicon/rating: LMQ66420MC3RXBRQ1; calculated 1.050 A peak and 1.313 A after margin require ≥2.0 A MAIN_3V3; passives/thermal remain open |
+| Low power | Reference has CAN wake only while main rail is retained; full hardware-off is voltage/USB wake only | Resolved for the conditional v1 architecture: hybrid rail-on ESP32/TCAN standby with switched peripherals; Task 5A.1 paper envelope is 408.026 µA (0.408 mA) at 12 V and 0.476/0.438/0.419/0.408/0.402/0.400 mA at 6/8/10/12/14.4/18 V |
+| Peak power | U4 is 600 mA class and U5 is undocumented here; new loads exceed its class | Resolved conditional silicon/population: LMQ66420MC3RXBRQ1 with exact `XGL5030-222MEC`, CIN/COUT/CVCC and CBOOT-DNP population; the 1.050 A operating-peak/thermal case and 1.313 A sizing result require a ≥2.0 A class. Effective capacitance, stability, thermal and EMI validation remain open |
 | USB/JTAG | USB consumes 19/20; SPI overlaps JTAG 39–41 | Preserve USB; reserve GPIO42 MTMS test pad and treat external JTAG as optional |
 
 ## Frozen allocation result
@@ -144,14 +144,14 @@ The recommended table is maintained in [`interfaces.md`](interfaces.md). In comp
 
 ## Unresolved engineering questions
 
-1. Can the calculated ≤0.424 mA parked envelope and the <0.50 mA stretch limit be verified on the complete board over voltage/temperature and wake duty cycle?
+1. Can the calculated 408.026 µA (0.408 mA) 12 V parked envelope, its 6–18 V model, and the <0.50 mA stretch limit be verified on the complete board over voltage/temperature and wake duty cycle?
 2. What exact 12 V passenger-vehicle transient, EMC, ESD, temperature, vibration, and compliance standards/classes apply? 24 V support is not required.
 3. Can optional split 120 Ω DNP/OFF termination and a DNP choke be laid out without harmful stubs/parasitics?
 4. What are the exact display module voltage, peak/backlight current, cable length, connector, and MISO behavior?
 5. What are the shift-light electrical load/fault cases and the exact speaker, acoustic load, and maximum operating duty?
 6. Is NEO-M9N availability/lifecycle and qualification acceptable, and which active antenna is selected? V_BCKP is switched off in v1.
 7. Which GNSS messages fit the assumed 200-byte epoch at the selected 230,400 bit/s while running the verified up-to-25 Hz constellation configuration?
-8. Do the frozen LMQ66420 variants satisfy the final transient, thermal, stability and EMI calculations with the selected passives?
+8. Do the frozen LMQ66420 variants satisfy the transient, effective-capacitance, thermal, stability and EMI requirements with the exact Task 5A.1 `XGL5030-222MEC`/TDK population?
 9. Does the GPIO11 SD_CS implementation remain inactive and non-back-powering through every reset/power state?
 10. Are GPIO4/5 still needed for board revision identification in the derivative?
 11. Is external four-wire JTAG required concurrently with the display/sound allocation, or is USB-JTAG sufficient?
